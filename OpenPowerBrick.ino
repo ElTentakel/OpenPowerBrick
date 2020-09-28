@@ -1,20 +1,28 @@
 /**
- * M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
- *
- * (For now menu system only)
- +
- * (c) Copyright 2020 -  Richard Jeske
- * Released GPL 2.0 Licence
- * 
- */
+   M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
+
+   (For now menu system only)
+  +
+   (c) Copyright 2020 -  Richard Jeske
+   Released GPL 2.0 Licence
+
+*/
 
 #include "PoweredUpRemote.h"
 #include "M5Atom.h"
 
-PoweredUpRemote myRemote;
+PoweredUpRemote Remote[2];
+PoweredUpRemote::Port RemotePortLeft[2] = { PoweredUpRemote::Port::LEFT, PoweredUpRemote::Port::LEFT};
+PoweredUpRemote::Port RemotePortRight[2] = { PoweredUpRemote::Port::RIGHT, PoweredUpRemote::Port::RIGHT };
 
-PoweredUpRemote::Port _portLeft = PoweredUpRemote::Port::LEFT;
-PoweredUpRemote::Port _portRight = PoweredUpRemote::Port::RIGHT;
+enum InitState      { notConnected = 0,
+                      Connected = 1,
+                      Configured = 2,
+                      Finished = 3
+};
+
+bool initAnimationState = false;
+InitState RemoteInitState[2] = {notConnected,notConnected};
 
 enum MenuState      { Init = 0,
                       Menu1 = 1,
@@ -44,43 +52,52 @@ enum motorDirection { Forward,
                     };
 
 typedef struct sFunctionParameters {
-      motorFunction   Function;
-      motorMode       Mode;
-      motorDirection  Direction;
-      int8_t          Steps;
-      uint8_t         Graphics [5][12];
+  motorFunction   Function;
+  motorMode       Mode;
+  motorDirection  Direction;
+  int8_t          Steps;
+  uint8_t         Graphics [5][12];
 } tFunctionParameters;
 
 typedef struct sSettings {
-      motorFunction   Function;
-      uint8_t         Strength;
+  motorFunction   Function;
+  uint8_t         Strength;
 } tSettings;
 
 tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 }, { No, 0 }, { No, 0 }, { No, 0 }},
-                                    [1] = {{ No, 0 }, { FullForward, 4 }, { No, 0 }, { No, 0 }},
-                                    [2] = {{ No, 0 }, { No, 0 }, { FullForward, 4 }, { No, 0 }},
-                                    [3] = {{ No, 0 }, { No, 0 }, { No, 0 }, { FullForward, 4 }}};
-
-tFunctionParameters functionParameters [motorFunctionLast] = 
-{
-  { No,             Off, Forward,  0,       { [0] ={  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 }}},
-  { FullForward,   Push, Forward,  1,       { [0] ={  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [1] ={  0,255,  0,   0,255,  0,   0,255,  0,    0,255,  0 }}},                                            
-  { FullBackward,  Push, Backward, 1,       { [0] ={  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [1] ={255,  0,  0, 255,  0,  0, 255,  0,  0,  255,  0,  0 }}},
-  { StepForward,   ToggleStep, Forward , 4, { [0] ={  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [1] ={  0, 64,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [2] ={  0, 64,  0,   0,128,  0,   0,  0,  0,    0,  0,  0 },
-                                              [3] ={  0, 64,  0,   0,128,  0,   0,192,  0,    0,  0,  0 },
-                                              [4] ={  0, 64,  0,   0,128,  0,   0,192,  0,    0,255,  0 }}},
-  { StepBackward,   ToggleStep, Backward, 4, {[0] ={  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [1] ={  64, 0,  0,  0,  0,   0,   0,  0,  0,    0,  0,  0 },
-                                              [2] ={  64, 0,  0, 128,  0,  0,   0,  0,  0,    0,  0,  0 },
-                                              [3] ={  64, 0,  0, 128,  0,  0, 192,  0,  0,    0,  0,  0 },
-                                              [4] ={  64, 0,  0, 128,  0,  0, 192,  0,  0,  255,  0,  0 }}}
+  [1] = {{ No, 0 }, { FullForward, 4 }, { No, 0 }, { No, 0 }},
+  [2] = {{ No, 0 }, { No, 0 }, { FullForward, 4 }, { No, 0 }},
+  [3] = {{ No, 0 }, { No, 0 }, { No, 0 }, { FullForward, 4 }}
 };
 
-MenuState stateMax = Menu5;
+tFunctionParameters functionParameters [motorFunctionLast] =
+{
+  { No,             Off, Forward,  0,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 }}},
+  { FullForward,   Push, Forward,  1,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [1] = {  0, 255,  0,   0, 255,  0,   0, 255,  0,    0, 255,  0 }
+    }
+  },
+  { FullBackward,  Push, Backward, 1,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [1] = {255,  0,  0, 255,  0,  0, 255,  0,  0,  255,  0,  0 }
+    }
+  },
+  { StepForward,   ToggleStep, Forward , 4, { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [1] = {  0, 64,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [2] = {  0, 64,  0,   0, 128,  0,   0,  0,  0,    0,  0,  0 },
+      [3] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0,  0,  0 },
+      [4] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0, 255,  0 }
+    }
+  },
+  { StepBackward,   ToggleStep, Backward, 4, {[0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [1] = {  64, 0,  0,  0,  0,   0,   0,  0,  0,    0,  0,  0 },
+      [2] = {  64, 0,  0, 128,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [3] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,    0,  0,  0 },
+      [4] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,  255,  0,  0 }
+    }
+  }
+};
+
+MenuState stateMax = Menu1;
 MenuState subStateMax = Menu4;
 motorFunction motorFunctionMax = StepBackward;
 uint8_t timer_counter = 0;
@@ -111,15 +128,15 @@ bool update_counter ()
 
 void setBuff(uint8_t Pos, uint8_t Rdata, uint8_t Gdata, uint8_t Bdata, bool updateBuff = false)
 {
-    DisBuff[2 + Pos * 3 + 0] = Rdata;
-    DisBuff[2 + Pos * 3 + 1] = Gdata;
-    DisBuff[2 + Pos * 3 + 2] = Bdata;
+  DisBuff[2 + Pos * 3 + 0] = Rdata;
+  DisBuff[2 + Pos * 3 + 1] = Gdata;
+  DisBuff[2 + Pos * 3 + 2] = Bdata;
 
-    if (updateBuff)
-    {
-        M5.dis.displaybuff(DisBuff);
-    }
-} 
+  if (updateBuff)
+  {
+    M5.dis.displaybuff(DisBuff);
+  }
+}
 
 void setBuffRowArray (uint8_t Row, uint8_t Start, uint8_t Lenght, uint8_t* Array, bool updateBuff = false)
 {
@@ -142,17 +159,17 @@ void clearBuff(void)
 {
   DisBuff[0] = 0x05;
   DisBuff[1] = 0x05;
-  
+
   for (int i = 0; i < 25; i++)
   {
-    setBuff (i,0,0,0);
+    setBuff (i, 0, 0, 0);
   }
 }
 
 void updateMotorFunction (bool reverse = false)
 {
-  motorFunction function = SettingsMatrix [state-2][substate-1].Function;
-  
+  motorFunction function = SettingsMatrix [state - 2][substate - 1].Function;
+
   if (reverse == false)
   {
     if (static_cast<int>(function) < static_cast<int>(motorFunctionMax))
@@ -175,10 +192,10 @@ void updateMotorFunction (bool reverse = false)
       function = motorFunctionMax;
     }
   }
-  
+
   Serial.println("motor" + String(static_cast<uint8_t>(substate)));
   setBuffRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
-  SettingsMatrix [state-2][substate-1].Function = function;
+  SettingsMatrix [state - 2][substate - 1].Function = function;
   timer_counter_step = 0;
   counter_delay(250);
 }
@@ -186,7 +203,7 @@ void updateMotorFunction (bool reverse = false)
 void updateSubState (bool reverse = false)
 {
   setBuff (static_cast<uint8_t>(substate) * 5, 0, 0, 0, true);
-  
+
   if (reverse == false)
   {
     if (static_cast<int>(substate) < static_cast<int>(subStateMax))
@@ -209,16 +226,16 @@ void updateSubState (bool reverse = false)
       substate = subStateMax;
     }
   }
-  
+
   Serial.println("substate" + String(static_cast<uint8_t>(substate)));
-  setBuff (static_cast<uint8_t>(substate) * 5, 255, 255, 255, true); 
-  
+  setBuff (static_cast<uint8_t>(substate) * 5, 255, 255, 255, true);
+
   for (int i = 0; i < subStateMax; i++)
   {
-    setBuffRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state-2][i].Function].Graphics[functionParameters[SettingsMatrix[state-2][i].Function].Steps], true);
+    setBuffRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state - 2][i].Function].Graphics[functionParameters[SettingsMatrix[state - 2][i].Function].Steps], true);
   }
   timer_counter_step = 0;
-  
+
   counter_delay(250);
 }
 
@@ -242,50 +259,130 @@ void updateState ()
 
     for (int i = 0; i < subStateMax; i++)
     {
-      setBuffRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state-2][i].Function].Graphics[functionParameters[SettingsMatrix[state-2][i].Function].Steps], true);
+      setBuffRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state - 2][i].Function].Graphics[functionParameters[SettingsMatrix[state - 2][i].Function].Steps], true);
     }
   }
 
   Serial.println("State" + String(static_cast<uint8_t>(state)));
-  setBuff (static_cast<uint8_t>(state)-1, 255, 255, 255, true); 
+  setBuff (static_cast<uint8_t>(state) - 1, 255, 255, 255, true);
+}
+
+void configure_remote (uint8_t id)
+{
+  Remote[id].activateButtonReports();
+  Remote[id].activatePortDevice(RemotePortLeft[id], 55);
+  Remote[id].activatePortDevice(RemotePortRight[id], 55);
+  RemoteInitState[id] = Configured;
+}
+
+bool connect_remote (uint8_t id)
+{
+  // 0: 1, 2
+  // 1: 3, 4
+  setBuff(id*2 + 1 , 64, 64, 64);
+  setBuff(id*2 + 2 , 64, 64, 64, true);
+  Remote[id].connectHub();
+
+  if (Remote[id].isConnected())
+  {
+    RemoteInitState[id] = Connected;
+    Serial.println("Connected to Remote");
+    Remote[id].setLedColor(WHITE);
+    return true;
+  }
+  else
+  {
+    setBuff(1, 255, 000, 0);
+    setBuff(2, 255, 000, 0);
+    setBuff(3, 255, 000, 0);
+    setBuff(4, 255, 000, 0, true);
+    Serial.println("Failed to connect to Remote");
+    return false;
+  }
+}
+
+void initAnimation ()
+{
+  if (update_counter ())
+  {
+    if (initAnimationState)
+    {
+      initAnimationState = false;
+      setBuff(0,0,0,0, true);
+    }
+    else
+    {
+      initAnimationState = true;
+      setBuff(0,0,0,255, true);
+    }
+  }
 }
 
 void setup() {
   Serial.begin(115200);
-  myRemote.init();
+
+  Remote[0].init();
 
   M5.begin(true, false, true);
   counter_delay(50);
   clearBuff();
   M5.dis.displaybuff(DisBuff);
-} 
+}
 
-void loop() {
-
+void loop()
+{
   // connect flow
   if (state == Init)
   {
-    if (myRemote.isConnecting()) {
-      setBuff(0,128,128,0, true);
-      myRemote.connectHub();
-      if (myRemote.isConnected()) {
-        setBuff(0,0,255,0);
-        Serial.println("Connected to Remote");
-        myRemote.setLedColor(GREEN);
-      } else {
-        setBuff(0,255,000,0);
-        Serial.println("Failed to connect to Remote");
+    /* Not supported yet 
+    if (RemoteInitState[0] == Finished && RemoteInitState[1] == Connected)
+    {
+      configure_remote (1);
+      Remote[1].setLedColor(GREEN);
+      setBuff(3,0,0,255);
+      setBuff(4,0,0,255, true);
+      stateMax = Menu5;
+    }
+    if (RemoteInitState[0] == Finished && Remote[1].isConnecting() && RemoteInitState[1] == notConnected)
+    {
+      connect_remote (1);
+    }
+    */
+    
+    if (RemoteInitState[0] == Connected)
+    {
+      configure_remote (0);
+      Remote[0].setLedColor(GREEN);
+      setBuff(1,0,255,0);
+      setBuff(2,0,255,0, true);
+      stateMax = Menu3;
+    }
+    
+    if (Remote[0].isConnecting() && RemoteInitState[0] == notConnected)
+    {
+      connect_remote (0);
+    }
+/*
+    if (M5.Btn.wasPressed())
+    {
+      if (RemoteInitState[0] == Finished)
+      {
+        updateState();
+      }
+      if (RemoteInitState[0] == Configured)
+      {
+        RemoteInitState[0] = Finished;
+        Remote[1].init();
       }
     }
-
-    if (myRemote.isConnected()) {
-      Serial.println("System is initialized");
+*/
+    if (M5.Btn.wasPressed())
+    {
       updateState();
-      myRemote.activateButtonReports(); 
-      myRemote.activatePortDevice(_portLeft, 55);
-      myRemote.activatePortDevice(_portRight, 55);
-      myRemote.setLedColor(WHITE);
     }
+
+    // Animation
+    initAnimation()
   }
   else
   {
@@ -294,50 +391,50 @@ void loop() {
       case Init:
         break;
       case Menu1:
-          if (myRemote.isLeftRemoteUpButtonPressed())
-          {
-          }
-          else if (myRemote.isLeftRemoteDownButtonPressed())
-          {
-          }
-          else if (myRemote.isRightRemoteUpButtonPressed())
-          {
-          }
-          else if (myRemote.isRightRemoteDownButtonPressed())
-          {
-          }
-          break;
+        if (Remote[0].isLeftRemoteUpButtonPressed())
+        {
+        }
+        else if (Remote[0].isLeftRemoteDownButtonPressed())
+        {
+        }
+        else if (Remote[0].isRightRemoteUpButtonPressed())
+        {
+        }
+        else if (Remote[0].isRightRemoteDownButtonPressed())
+        {
+        }
+        break;
       default:
-          if (myRemote.isLeftRemoteUpButtonPressed())
-          {
-            updateSubState (true);
-          }
-          else if (myRemote.isLeftRemoteDownButtonPressed())
-          {
-            updateSubState ();
-          }
-          else if (myRemote.isRightRemoteUpButtonPressed())
-          {
-            updateMotorFunction ();
-          }
-          else if (myRemote.isRightRemoteDownButtonPressed())
-          {
-            updateMotorFunction (true);
-          }
+        if (Remote[0].isLeftRemoteUpButtonPressed())
+        {
+          updateSubState (true);
+        }
+        else if (Remote[0].isLeftRemoteDownButtonPressed())
+        {
+          updateSubState ();
+        }
+        else if (Remote[0].isRightRemoteUpButtonPressed())
+        {
+          updateMotorFunction ();
+        }
+        else if (Remote[0].isRightRemoteDownButtonPressed())
+        {
+          updateMotorFunction (true);
+        }
 
-          // Animation
-          if (update_counter ())
+        // Animation
+        if (update_counter ())
+        {
+          timer_counter_step++;
+          if (timer_counter_step > functionParameters[SettingsMatrix[state - 2][substate - 1].Function].Steps)
           {
-            timer_counter_step++;
-            if (timer_counter_step > functionParameters[SettingsMatrix[state-2][substate-1].Function].Steps)
-            {
-              timer_counter_step = 0;
-            }
-            setBuffRowArray(substate, 1, 4, functionParameters[SettingsMatrix[state-2][substate-1].Function].Graphics[timer_counter_step], true);
+            timer_counter_step = 0;
           }
-          break;
+          setBuffRowArray(substate, 1, 4, functionParameters[SettingsMatrix[state - 2][substate - 1].Function].Graphics[timer_counter_step], true);
+        }
+        break;
     }
-    
+
     if (M5.Btn.wasPressed())
     {
       updateState();
@@ -345,5 +442,5 @@ void loop() {
 
   }
   counter_delay (50);
-  M5.update();  
+  M5.update();
 }
