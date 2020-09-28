@@ -382,7 +382,7 @@ void loop()
     }
 
     // Animation
-    initAnimation()
+    initAnimation();
   }
   else
   {
