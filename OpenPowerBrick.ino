@@ -9,11 +9,17 @@
 */
 
 #include "PoweredUpRemote.h"
+#include "PoweredUpHub.h"
 #include "M5Atom.h"
 
 PoweredUpRemote Remote[2];
+PoweredUpHub PUHub[2];
+
 PoweredUpRemote::Port RemotePortLeft[2] = { PoweredUpRemote::Port::LEFT, PoweredUpRemote::Port::LEFT};
-PoweredUpRemote::Port RemotePortRight[2] = { PoweredUpRemote::Port::RIGHT, PoweredUpRemote::Port::RIGHT };
+PoweredUpRemote::Port RemotePortRight[2] = { PoweredUpRemote::Port::RIGHT, PoweredUpRemote::Port::RIGHT};
+
+PoweredUpHub::Port PUportA[2] = { PoweredUpHub::Port::A, PoweredUpHub::Port::A };
+PoweredUpHub::Port PUportB[2] = { PoweredUpHub::Port::B, PoweredUpHub::Port::B };
 
 enum InitState      { notConnected = 0,
                       Connected = 1,
@@ -23,6 +29,7 @@ enum InitState      { notConnected = 0,
 
 bool initAnimationState = false;
 InitState RemoteInitState[2] = {notConnected,notConnected};
+InitState HubInitState[2] = {notConnected,notConnected};
 
 enum MenuState      { Init = 0,
                       Menu1 = 1,
@@ -301,7 +308,39 @@ bool connect_remote (uint8_t id)
   }
 }
 
-void initAnimation ()
+void configure_hub (uint8_t id)
+{
+  HubInitState[id] = Configured;
+}
+
+
+bool connect_hub (uint8_t id)
+{
+  // 0: 1, 2
+  // 1: 3, 4
+  setBuff(id*5 + 5 , 64, 64, 64);
+  setBuff(id*5 + 10 , 64, 64, 64, true);
+  PUHub[id].connectHub();
+
+  if (PUHub[id].isConnected())
+  {
+    HubInitState[id] = Connected;
+    Serial.println("Connected to Hub");
+    PUHub[id].setLedColor(WHITE);
+    return true;
+  }
+  else
+  {
+    setBuff(5, 255, 000, 0);
+    setBuff(10, 255, 000, 0);
+    setBuff(15, 255, 000, 0);
+    setBuff(20, 255, 000, 0, true);
+    Serial.println("Failed to connect to Remote");
+    return false;
+  }
+}
+
+void InitAnimation ()
 {
   if (update_counter ())
   {
@@ -333,22 +372,7 @@ void loop()
 {
   // connect flow
   if (state == Init)
-  {
-    /* Not supported yet 
-    if (RemoteInitState[0] == Finished && RemoteInitState[1] == Connected)
-    {
-      configure_remote (1);
-      Remote[1].setLedColor(GREEN);
-      setBuff(3,0,0,255);
-      setBuff(4,0,0,255, true);
-      stateMax = Menu5;
-    }
-    if (RemoteInitState[0] == Finished && Remote[1].isConnecting() && RemoteInitState[1] == notConnected)
-    {
-      connect_remote (1);
-    }
-    */
-    
+  {    
     if (RemoteInitState[0] == Connected)
     {
       configure_remote (0);
@@ -356,33 +380,36 @@ void loop()
       setBuff(1,0,255,0);
       setBuff(2,0,255,0, true);
       stateMax = Menu3;
+      RemoteInitState[0] = Finished;
+      PUHub[0].init();
     }
     
     if (Remote[0].isConnecting() && RemoteInitState[0] == notConnected)
     {
       connect_remote (0);
     }
-/*
-    if (M5.Btn.wasPressed())
+
+    if (RemoteInitState[0] == Finished && HubInitState[0] == Connected)
     {
-      if (RemoteInitState[0] == Finished)
-      {
-        updateState();
-      }
-      if (RemoteInitState[0] == Configured)
-      {
-        RemoteInitState[0] = Finished;
-        Remote[1].init();
-      }
+      configure_hub (0);
+      PUHub[0].setLedColor(GREEN);
+      setBuff(5,0,255,0);
+      setBuff(10,0,255,0, true);
+      subStateMax = Menu2;
     }
-*/
+    
+    if (RemoteInitState[0] == Finished && HubInitState[0] == notConnected)
+    {
+      connect_hub (0);
+    }
+    
     if (M5.Btn.wasPressed())
     {
       updateState();
     }
 
     // Animation
-    initAnimation();
+    InitAnimation();
   }
   else
   {
