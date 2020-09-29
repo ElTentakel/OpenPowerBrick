@@ -1,7 +1,7 @@
 /**
    M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
 
-   (For now menu system only)
+   (not working properly for now)
   +
    (c) Copyright 2020 -  Richard Jeske
    Released GPL 2.0 Licence
@@ -55,13 +55,12 @@ enum motorMode      { Off = 0,
                     };
 
 enum motorDirection { Forward,
-                      Backward
+                      Backward,
+                      Stop
                     };
 
 typedef struct sFunctionParameters {
   motorFunction   Function;
-  motorMode       Mode;
-  motorDirection  Direction;
   int8_t          Steps;
   uint8_t         Graphics [5][12];
 } tFunctionParameters;
@@ -69,33 +68,38 @@ typedef struct sFunctionParameters {
 typedef struct sSettings {
   motorFunction   Function;
   uint8_t         Strength;
+  int8_t          currentValue;
 } tSettings;
 
-tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 }, { No, 0 }, { No, 0 }, { No, 0 }},
-  [1] = {{ No, 0 }, { FullForward, 4 }, { No, 0 }, { No, 0 }},
-  [2] = {{ No, 0 }, { No, 0 }, { FullForward, 4 }, { No, 0 }},
-  [3] = {{ No, 0 }, { No, 0 }, { No, 0 }, { FullForward, 4 }}
+tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
+  [1] = {{ No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }, { No, 0, 0 }},
+  [2] = {{ No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }},
+  [3] = {{ No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }}
 };
 
 tFunctionParameters functionParameters [motorFunctionLast] =
 {
-  { No,             Off, Forward,  0,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 }}},
-  { FullForward,   Push, Forward,  1,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+  { No,          0,  { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 }}},
+  { FullForward, 1,  { 
+      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
       [1] = {  0, 255,  0,   0, 255,  0,   0, 255,  0,    0, 255,  0 }
     }
   },
-  { FullBackward,  Push, Backward, 1,       { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+  { FullBackward, 1, {
+      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
       [1] = {255,  0,  0, 255,  0,  0, 255,  0,  0,  255,  0,  0 }
     }
   },
-  { StepForward,   ToggleStep, Forward , 4, { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+  { StepForward,  4, { 
+      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
       [1] = {  0, 64,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
       [2] = {  0, 64,  0,   0, 128,  0,   0,  0,  0,    0,  0,  0 },
       [3] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0,  0,  0 },
       [4] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0, 255,  0 }
     }
   },
-  { StepBackward,   ToggleStep, Backward, 4, {[0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+  { StepBackward, 4, {
+      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
       [1] = {  64, 0,  0,  0,  0,   0,   0,  0,  0,    0,  0,  0 },
       [2] = {  64, 0,  0, 128,  0,  0,   0,  0,  0,    0,  0,  0 },
       [3] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,    0,  0,  0 },
@@ -105,7 +109,7 @@ tFunctionParameters functionParameters [motorFunctionLast] =
 };
 
 MenuState stateMax = Menu1;
-MenuState subStateMax = Menu4;
+MenuState subStateMax = Init;
 motorFunction motorFunctionMax = StepBackward;
 uint8_t timer_counter = 0;
 uint8_t timer_counter_step = 0;
@@ -205,6 +209,141 @@ void updateMotorFunction (bool reverse = false)
   SettingsMatrix [state - 2][substate - 1].Function = function;
   timer_counter_step = 0;
   counter_delay(250);
+}
+
+int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{
+  return currentValue;
+}
+
+int8_t MotorFunctionFullForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{  
+  if (buttonPressed && Action == Forward)
+  {
+    return Steps;
+  }
+  else if (buttonPressed && Action == Backward)
+  {
+    return -Steps;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+int8_t MotorFunctionFullBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{  
+  if (buttonPressed && Action == Forward)
+  {
+    return -Steps;
+  }
+  else if (buttonPressed && Action == Backward)
+  {
+    return Steps;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+int8_t MotorFunctionStepForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{
+  if (buttonPressed && Action == Forward && currentValue < Steps)
+  {
+    return currentValue + 1;
+  }
+  else if (buttonPressed && Action == Backward && currentValue > Steps)
+  {
+    return currentValue - 1;
+  }
+  else if (buttonPressed && Action == Stop)
+  {
+    return 0;
+  }
+  else
+  {
+    return currentValue;
+  }
+}
+int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{
+  if (buttonPressed && Action == Forward && currentValue > Steps)
+  {
+    return currentValue - 1;
+  }
+  else if (buttonPressed && Action == Backward && currentValue > Steps)
+  {
+    return currentValue + 1;
+  }
+  else if (buttonPressed && Action == Stop)
+  {
+    return 0;
+  }
+  else
+  {
+    return currentValue;
+  }
+}
+
+void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
+{
+  int Speed =  (100 * currentValue) / maxValue;
+  
+  switch (id)
+  {
+    case 0:
+      PUHub[0].setMotorSpeed(PUportA[0], Speed);
+    break;
+    case 1:
+      PUHub[0].setMotorSpeed(PUportB[0], Speed);
+    break;
+    case 2:
+      PUHub[1].setMotorSpeed(PUportA[1], Speed);
+    break;
+    case 3:
+     PUHub[1].setMotorSpeed(PUportB[1], Speed);
+    break;
+  }
+}
+
+void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
+{
+  int8_t newValue;
+  for ( uint8_t i = 1; i <= subStateMax; i++)
+  {
+    switch (SettingsMatrix[id][i-1].Function)  
+    {
+      case FullForward:
+       newValue = MotorFunctionFullForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullForward].Steps);
+      break;
+      case FullBackward:
+       newValue = MotorFunctionFullBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullBackward].Steps);
+      break;
+      case StepForward:
+       newValue = MotorFunctionStepForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepForward].Steps);
+      break;
+      case StepBackward:
+       newValue = MotorFunctionStepBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepBackward].Steps);
+      break;
+    }
+
+    if (newValue != SettingsMatrix[id][i-1].currentValue)
+    {
+      SettingsMatrix[id][i-1].currentValue = newValue;
+      setMotorSpeed (i-1, newValue, functionParameters[SettingsMatrix[id][i-1].Function].Steps);
+      
+      if (newValue == 0)
+        setBuff (5*(1 + id) + i, 0, 0, 0, true);
+
+      if (newValue > 0)
+        setBuff (5*(1 + id) + i, 0, 255, 0, true);
+
+      if (newValue < 0)
+        setBuff (5*(1 + id) + i, 255, 0, 0, true);
+    }
+  }
 }
 
 void updateSubState (bool reverse = false)
@@ -420,16 +559,37 @@ void loop()
       case Menu1:
         if (Remote[0].isLeftRemoteUpButtonPressed())
         {
+          controlMotorFuntion (0, Forward, true);
         }
         else if (Remote[0].isLeftRemoteDownButtonPressed())
         {
+          controlMotorFuntion (0, Backward, true);
+        }
+        else if (Remote[0].isLeftRemoteButtonReleased())
+        {
+          controlMotorFuntion (0, Backward, false);
+        }
+        else if (Remote[0].isLeftRemoteStopButtonPressed())
+        {
+          controlMotorFuntion (0, Stop, true);
         }
         else if (Remote[0].isRightRemoteUpButtonPressed())
         {
+          controlMotorFuntion (1, Forward, true);
         }
         else if (Remote[0].isRightRemoteDownButtonPressed())
         {
+          controlMotorFuntion (1, Backward, true);
         }
+        else if (Remote[0].isRightRemoteButtonReleased())
+        {
+          controlMotorFuntion (1, Backward, false);
+        }
+        else if (Remote[0].isRightRemoteStopButtonPressed())
+        {
+          controlMotorFuntion (1, Stop, true);
+        }
+        
         break;
       default:
         if (Remote[0].isLeftRemoteUpButtonPressed())
