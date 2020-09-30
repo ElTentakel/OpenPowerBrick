@@ -1,8 +1,8 @@
 /**
-   M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
+   M5Stack Matrix Atom Application to control PoweredUp! and later Control+ Devices
 
-   (not working properly for now)
-  +
+   (working, but not complete and not stable)
+  
    (c) Copyright 2020 -  Richard Jeske
    Released GPL 2.0 Licence
 
@@ -64,6 +64,14 @@ typedef struct sFunctionParameters {
   int8_t          Steps;
   uint8_t         Graphics [5][12];
 } tFunctionParameters;
+
+typedef struct sRemoteState
+{
+  bool  RightPressed;
+  bool  LeftPressed;
+} tRemoteState;
+
+tRemoteState RemoteState[2];
 
 typedef struct sSettings {
   motorFunction   Function;
@@ -254,7 +262,7 @@ int8_t MotorFunctionStepForward  (int8_t currentValue, motorDirection Action, bo
   {
     return currentValue + 1;
   }
-  else if (buttonPressed && Action == Backward && currentValue > Steps)
+  else if (buttonPressed && Action == Backward && currentValue > -Steps)
   {
     return currentValue - 1;
   }
@@ -269,11 +277,11 @@ int8_t MotorFunctionStepForward  (int8_t currentValue, motorDirection Action, bo
 }
 int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
 {
-  if (buttonPressed && Action == Forward && currentValue > Steps)
+  if (buttonPressed && Action == Forward && currentValue > -Steps)
   {
     return currentValue - 1;
   }
-  else if (buttonPressed && Action == Backward && currentValue > Steps)
+  else if (buttonPressed && Action == Backward && currentValue < Steps)
   {
     return currentValue + 1;
   }
@@ -290,6 +298,8 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
 void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
 {
   int Speed =  (100 * currentValue) / maxValue;
+
+  Serial.println("setMotorSpeed ID:" + String(id) + " Speed:" + String(currentValue));
   
   switch (id)
   {
@@ -303,30 +313,39 @@ void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
       PUHub[1].setMotorSpeed(PUportA[1], Speed);
     break;
     case 3:
-     PUHub[1].setMotorSpeed(PUportB[1], Speed);
+      PUHub[1].setMotorSpeed(PUportB[1], Speed);
     break;
   }
 }
 
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 {
+  Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
+  
   int8_t newValue;
   for ( uint8_t i = 1; i <= subStateMax; i++)
   {
     switch (SettingsMatrix[id][i-1].Function)  
     {
       case FullForward:
+       Serial.println("FullForward");
        newValue = MotorFunctionFullForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullForward].Steps);
       break;
       case FullBackward:
+       Serial.println("FullBackward");
        newValue = MotorFunctionFullBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullBackward].Steps);
       break;
       case StepForward:
+       Serial.println("StepForward");
        newValue = MotorFunctionStepForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepForward].Steps);
       break;
       case StepBackward:
+       Serial.println("StepBackward");
        newValue = MotorFunctionStepBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepBackward].Steps);
       break;
+      default:
+       newValue = SettingsMatrix[id][i-1].currentValue;
+       break;
     }
 
     if (newValue != SettingsMatrix[id][i-1].currentValue)
@@ -557,37 +576,54 @@ void loop()
       case Init:
         break;
       case Menu1:
-        if (Remote[0].isLeftRemoteUpButtonPressed())
+        if (Remote[0].isLeftRemoteStopButtonPressed())
         {
-          controlMotorFuntion (0, Forward, true);
+          if (RemoteState[0].LeftPressed == false)
+            controlMotorFuntion (0, Stop, true);
+          RemoteState[0].LeftPressed = true;
         }
         else if (Remote[0].isLeftRemoteDownButtonPressed())
         {
-          controlMotorFuntion (0, Backward, true);
+          if (RemoteState[0].LeftPressed == false)
+            controlMotorFuntion (0, Backward, true);
+          RemoteState[0].LeftPressed = true;
         }
-        else if (Remote[0].isLeftRemoteButtonReleased())
+        else if (Remote[0].isLeftRemoteUpButtonPressed())
         {
-          controlMotorFuntion (0, Backward, false);
+          if (RemoteState[0].LeftPressed == false)
+            controlMotorFuntion (0, Forward, true);
+          RemoteState[0].LeftPressed = true;
         }
-        else if (Remote[0].isLeftRemoteStopButtonPressed())
+        else if (RemoteState[0].LeftPressed)
         {
-          controlMotorFuntion (0, Stop, true);
+          if (RemoteState[0].LeftPressed == true)
+            controlMotorFuntion (0, Backward, false);
+          RemoteState[0].LeftPressed = false;
         }
-        else if (Remote[0].isRightRemoteUpButtonPressed())
+
+        if (Remote[0].isRightRemoteStopButtonPressed())
         {
-          controlMotorFuntion (1, Forward, true);
+          if (RemoteState[0].RightPressed == false)
+            controlMotorFuntion (1, Stop, true);
+          RemoteState[0].RightPressed = true;
         }
         else if (Remote[0].isRightRemoteDownButtonPressed())
         {
-          controlMotorFuntion (1, Backward, true);
+          if (RemoteState[0].RightPressed == false)          
+            controlMotorFuntion (1, Backward, true);
+          RemoteState[0].RightPressed = true;
         }
-        else if (Remote[0].isRightRemoteButtonReleased())
+        else if (Remote[0].isRightRemoteUpButtonPressed())
         {
-          controlMotorFuntion (1, Backward, false);
+          if (RemoteState[0].RightPressed == false)
+            controlMotorFuntion (1, Forward, true);
+          RemoteState[0].RightPressed = true;
         }
-        else if (Remote[0].isRightRemoteStopButtonPressed())
+        else if (RemoteState[0].RightPressed)
         {
-          controlMotorFuntion (1, Stop, true);
+          if (RemoteState[0].RightPressed == true)
+            controlMotorFuntion (1, Backward, false);
+          RemoteState[0].RightPressed = false;
         }
         
         break;
