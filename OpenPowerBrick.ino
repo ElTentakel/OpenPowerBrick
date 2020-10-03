@@ -1,8 +1,8 @@
 /**
-   M5Stack Matrix Atom Application to control PoweredUp! and later Control+ Devices
+   M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
 
-   (working, but not complete and not stable)
-  
+   (For now menu system only)
+  +
    (c) Copyright 2020 -  Richard Jeske
    Released GPL 2.0 Licence
 
@@ -21,49 +21,13 @@ PoweredUpRemote::Port RemotePortRight[2] = { PoweredUpRemote::Port::RIGHT, Power
 PoweredUpHub::Port PUportA[2] = { PoweredUpHub::Port::A, PoweredUpHub::Port::A };
 PoweredUpHub::Port PUportB[2] = { PoweredUpHub::Port::B, PoweredUpHub::Port::B };
 
-enum InitState      { notConnected = 0,
-                      Connected = 1,
-                      Configured = 2,
-                      Finished = 3
-};
+#include "menu.h"
+#include "motor.h"
+#include "motorfunctions.h"
 
 bool initAnimationState = false;
-InitState RemoteInitState[2] = {notConnected,notConnected};
-InitState HubInitState[2] = {notConnected,notConnected};
-
-enum MenuState      { Init = 0,
-                      Menu1 = 1,
-                      Menu2 = 2,
-                      Menu3 = 3,
-                      Menu4 = 4,
-                      Menu5 = 5,
-                      MenuLast
-                    };
-
-enum motorFunction  { No = 0,
-                      FullForward = 1,
-                      FullBackward = 2,
-                      StepForward = 3,
-                      StepBackward = 4,
-                      motorFunctionLast
-                    };
-
-enum motorMode      { Off = 0,
-                      Push,
-                      PushRamp,
-                      ToggleStep
-                    };
-
-enum motorDirection { Forward,
-                      Backward,
-                      Stop
-                    };
-
-typedef struct sFunctionParameters {
-  motorFunction   Function;
-  int8_t          Steps;
-  uint8_t         Graphics [5][12];
-} tFunctionParameters;
+InitState RemoteInitState[2] = {notConnected, notConnected};
+InitState HubInitState[2] = {notConnected, notConnected};
 
 typedef struct sRemoteState
 {
@@ -73,52 +37,15 @@ typedef struct sRemoteState
 
 tRemoteState RemoteState[2];
 
-typedef struct sSettings {
-  motorFunction   Function;
-  uint8_t         Strength;
-  int8_t          currentValue;
-} tSettings;
-
 tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
   [1] = {{ No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }, { No, 0, 0 }},
   [2] = {{ No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }},
   [3] = {{ No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }}
 };
 
-tFunctionParameters functionParameters [motorFunctionLast] =
-{
-  { No,          0,  { [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 }}},
-  { FullForward, 1,  { 
-      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [1] = {  0, 255,  0,   0, 255,  0,   0, 255,  0,    0, 255,  0 }
-    }
-  },
-  { FullBackward, 1, {
-      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [1] = {255,  0,  0, 255,  0,  0, 255,  0,  0,  255,  0,  0 }
-    }
-  },
-  { StepForward,  4, { 
-      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [1] = {  0, 64,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [2] = {  0, 64,  0,   0, 128,  0,   0,  0,  0,    0,  0,  0 },
-      [3] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0,  0,  0 },
-      [4] = {  0, 64,  0,   0, 128,  0,   0, 192,  0,    0, 255,  0 }
-    }
-  },
-  { StepBackward, 4, {
-      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [1] = {  64, 0,  0,  0,  0,   0,   0,  0,  0,    0,  0,  0 },
-      [2] = {  64, 0,  0, 128,  0,  0,   0,  0,  0,    0,  0,  0 },
-      [3] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,    0,  0,  0 },
-      [4] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,  255,  0,  0 }
-    }
-  }
-};
-
 MenuState stateMax = Menu1;
 MenuState subStateMax = Init;
-motorFunction motorFunctionMax = StepBackward;
+motorFunction motorFunctionMax = static_cast<motorFunction>(static_cast<int>(motorFunctionLast) - 1);
 uint8_t timer_counter = 0;
 uint8_t timer_counter_step = 0;
 
@@ -145,7 +72,7 @@ bool update_counter ()
   return false;
 }
 
-void setBuff(uint8_t Pos, uint8_t Rdata, uint8_t Gdata, uint8_t Bdata, bool updateBuff = false)
+void setBuff(const uint8_t Pos, const uint8_t Rdata, const uint8_t Gdata, const uint8_t Bdata, const bool updateBuff = false)
 {
   DisBuff[2 + Pos * 3 + 0] = Rdata;
   DisBuff[2 + Pos * 3 + 1] = Gdata;
@@ -157,7 +84,7 @@ void setBuff(uint8_t Pos, uint8_t Rdata, uint8_t Gdata, uint8_t Bdata, bool upda
   }
 }
 
-void setBuffRowArray (uint8_t Row, uint8_t Start, uint8_t Lenght, uint8_t* Array, bool updateBuff = false)
+void setBuffRowArray (const uint8_t Row, const uint8_t Start, const uint8_t Lenght, const uint8_t* Array, const bool updateBuff = false)
 {
   uint8_t j = 0;
   for (int i = Start; i < 5; i++)
@@ -225,7 +152,7 @@ int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool button
 }
 
 int8_t MotorFunctionFullForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
-{  
+{
   if (buttonPressed && Action == Forward)
   {
     return Steps;
@@ -241,7 +168,7 @@ int8_t MotorFunctionFullForward  (int8_t currentValue, motorDirection Action, bo
 }
 
 int8_t MotorFunctionFullBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
-{  
+{
   if (buttonPressed && Action == Forward)
   {
     return -Steps;
@@ -300,67 +227,75 @@ void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
   int Speed =  (100 * currentValue) / maxValue;
 
   Serial.println("setMotorSpeed ID:" + String(id) + " Speed:" + String(currentValue));
-  
+
   switch (id)
   {
     case 0:
       PUHub[0].setMotorSpeed(PUportA[0], Speed);
-    break;
+      break;
     case 1:
       PUHub[0].setMotorSpeed(PUportB[0], Speed);
-    break;
+      break;
     case 2:
       PUHub[1].setMotorSpeed(PUportA[1], Speed);
-    break;
+      break;
     case 3:
       PUHub[1].setMotorSpeed(PUportB[1], Speed);
-    break;
+      break;
   }
 }
 
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 {
   Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
-  
+
   int8_t newValue;
   for ( uint8_t i = 1; i <= subStateMax; i++)
   {
-    switch (SettingsMatrix[id][i-1].Function)  
+    switch (SettingsMatrix[id][i - 1].Function)
     {
       case FullForward:
-       Serial.println("FullForward");
-       newValue = MotorFunctionFullForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullForward].Steps);
-      break;
+        Serial.println("FullForward");
+        newValue = MotorFunctionFullForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[FullForward].Steps);
+        break;
       case FullBackward:
-       Serial.println("FullBackward");
-       newValue = MotorFunctionFullBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[FullBackward].Steps);
-      break;
+        Serial.println("FullBackward");
+        newValue = MotorFunctionFullBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[FullBackward].Steps);
+        break;
       case StepForward:
-       Serial.println("StepForward");
-       newValue = MotorFunctionStepForward  (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepForward].Steps);
-      break;
+        Serial.println("StepForward");
+        newValue = MotorFunctionStepForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepForward].Steps);
+        break;
       case StepBackward:
-       Serial.println("StepBackward");
-       newValue = MotorFunctionStepBackward (SettingsMatrix[id][i-1].currentValue, dir, buttonPressed, functionParameters[StepBackward].Steps);
-      break;
+        Serial.println("StepBackward");
+        newValue = MotorFunctionStepBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepBackward].Steps);
+        break;
+      case StepForward8:
+        Serial.println("StepForward8");
+        newValue = MotorFunctionStepForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepForward8].Steps);
+        break;
+      case StepBackward8:
+        Serial.println("StepBackward8");
+        newValue = MotorFunctionStepBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepBackward8].Steps);
+        break;
       default:
-       newValue = SettingsMatrix[id][i-1].currentValue;
-       break;
+        newValue = SettingsMatrix[id][i - 1].currentValue;
+        break;
     }
 
-    if (newValue != SettingsMatrix[id][i-1].currentValue)
+    if (newValue != SettingsMatrix[id][i - 1].currentValue)
     {
-      SettingsMatrix[id][i-1].currentValue = newValue;
-      setMotorSpeed (i-1, newValue, functionParameters[SettingsMatrix[id][i-1].Function].Steps);
-      
+      SettingsMatrix[id][i - 1].currentValue = newValue;
+      setMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps);
+
       if (newValue == 0)
-        setBuff (5*(1 + id) + i, 0, 0, 0, true);
+        setBuff (5 * (1 + id) + i, 0, 0, 0, true);
 
       if (newValue > 0)
-        setBuff (5*(1 + id) + i, 0, 255, 0, true);
+        setBuff (5 * (1 + id) + i, 0, 255, 0, true);
 
       if (newValue < 0)
-        setBuff (5*(1 + id) + i, 255, 0, 0, true);
+        setBuff (5 * (1 + id) + i, 255, 0, 0, true);
     }
   }
 }
@@ -444,8 +379,8 @@ bool connect_remote (uint8_t id)
 {
   // 0: 1, 2
   // 1: 3, 4
-  setBuff(id*2 + 1 , 64, 64, 64);
-  setBuff(id*2 + 2 , 64, 64, 64, true);
+  setBuff(id * 2 + 1 , 64, 64, 64);
+  setBuff(id * 2 + 2 , 64, 64, 64, true);
   Remote[id].connectHub();
 
   if (Remote[id].isConnected())
@@ -476,8 +411,8 @@ bool connect_hub (uint8_t id)
 {
   // 0: 1, 2
   // 1: 3, 4
-  setBuff(id*5 + 5 , 64, 64, 64);
-  setBuff(id*5 + 10 , 64, 64, 64, true);
+  setBuff(id * 5 + 5 , 64, 64, 64);
+  setBuff(id * 5 + 10 , 64, 64, 64, true);
   PUHub[id].connectHub();
 
   if (PUHub[id].isConnected())
@@ -505,12 +440,12 @@ void InitAnimation ()
     if (initAnimationState)
     {
       initAnimationState = false;
-      setBuff(0,0,0,0, true);
+      setBuff(0, 0, 0, 0, true);
     }
     else
     {
       initAnimationState = true;
-      setBuff(0,0,0,255, true);
+      setBuff(0, 0, 0, 255, true);
     }
   }
 }
@@ -530,18 +465,18 @@ void loop()
 {
   // connect flow
   if (state == Init)
-  {    
+  {
     if (RemoteInitState[0] == Connected)
     {
       configure_remote (0);
       Remote[0].setLedColor(GREEN);
-      setBuff(1,0,255,0);
-      setBuff(2,0,255,0, true);
+      setBuff(1, 0, 255, 0);
+      setBuff(2, 0, 255, 0, true);
       stateMax = Menu3;
       RemoteInitState[0] = Finished;
       PUHub[0].init();
     }
-    
+
     if (Remote[0].isConnecting() && RemoteInitState[0] == notConnected)
     {
       connect_remote (0);
@@ -551,16 +486,16 @@ void loop()
     {
       configure_hub (0);
       PUHub[0].setLedColor(GREEN);
-      setBuff(5,0,255,0);
-      setBuff(10,0,255,0, true);
+      setBuff(5, 0, 255, 0);
+      setBuff(10, 0, 255, 0, true);
       subStateMax = Menu2;
     }
-    
+
     if (RemoteInitState[0] == Finished && HubInitState[0] == notConnected)
     {
       connect_hub (0);
     }
-    
+
     if (M5.Btn.wasPressed())
     {
       updateState();
@@ -609,7 +544,7 @@ void loop()
         }
         else if (Remote[0].isRightRemoteDownButtonPressed())
         {
-          if (RemoteState[0].RightPressed == false)          
+          if (RemoteState[0].RightPressed == false)
             controlMotorFuntion (1, Backward, true);
           RemoteState[0].RightPressed = true;
         }
@@ -625,7 +560,7 @@ void loop()
             controlMotorFuntion (1, Backward, false);
           RemoteState[0].RightPressed = false;
         }
-        
+
         break;
       default:
         if (Remote[0].isLeftRemoteUpButtonPressed())
