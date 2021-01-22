@@ -1,25 +1,24 @@
 /**
    M5Stack Matrix Atom Application to control PoweredUp! and Control+ Devices
 
-   (For now menu system only)
-  +
+   Plattform: ESP32 Pico Kit
+
    (c) Copyright 2020 -  Richard Jeske
    Released GPL 2.0 Licence
 
 */
 
-#include "PoweredUpRemote.h"
-#include "PoweredUpHub.h"
+#include "Lpf2Hub.h"
 #include "M5Atom.h"
 
-PoweredUpRemote Remote[2];
-PoweredUpHub PUHub[2];
+Lpf2Hub  Remote[2];
+Lpf2Hub  PUHub[2];
 
-PoweredUpRemote::Port RemotePortLeft[2] = { PoweredUpRemote::Port::LEFT, PoweredUpRemote::Port::LEFT};
-PoweredUpRemote::Port RemotePortRight[2] = { PoweredUpRemote::Port::RIGHT, PoweredUpRemote::Port::RIGHT};
+byte RemotePortLeft[2] = { (byte)PoweredUpRemoteHubPort::LEFT, (byte)PoweredUpRemoteHubPort::LEFT};
+byte RemotePortRight[2] = { (byte)PoweredUpRemoteHubPort::RIGHT, (byte)PoweredUpRemoteHubPort::RIGHT};
 
-PoweredUpHub::Port PUportA[2] = { PoweredUpHub::Port::A, PoweredUpHub::Port::A };
-PoweredUpHub::Port PUportB[2] = { PoweredUpHub::Port::B, PoweredUpHub::Port::B };
+byte PUportA[2] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::A };
+byte PUportB[2] = { (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::B };
 
 #include "menu.h"
 #include "motor.h"
@@ -231,16 +230,16 @@ void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
   switch (id)
   {
     case 0:
-      PUHub[0].setMotorSpeed(PUportA[0], Speed);
+      PUHub[0].setBasicMotorSpeed(PUportA[0], Speed);
       break;
     case 1:
-      PUHub[0].setMotorSpeed(PUportB[0], Speed);
+      PUHub[0].setBasicMotorSpeed(PUportB[0], Speed);
       break;
     case 2:
-      PUHub[1].setMotorSpeed(PUportA[1], Speed);
+      PUHub[1].setBasicMotorSpeed(PUportA[1], Speed);
       break;
     case 3:
-      PUHub[1].setMotorSpeed(PUportB[1], Speed);
+      PUHub[1].setBasicMotorSpeed(PUportB[1], Speed);
       break;
   }
 }
@@ -369,9 +368,9 @@ void updateState ()
 
 void configure_remote (uint8_t id)
 {
-  Remote[id].activateButtonReports();
-  Remote[id].activatePortDevice(RemotePortLeft[id], 55);
-  Remote[id].activatePortDevice(RemotePortRight[id], 55);
+  Remote[id].activatePortDevice(PUportA[id], remoteCallback);
+  Remote[id].activatePortDevice(PUportB[id], remoteCallback);
+  Remote[id].setLedColor(WHITE);
   RemoteInitState[id] = Configured;
 }
 
@@ -450,10 +449,65 @@ void InitAnimation ()
   }
 }
 
+// callback function to handle updates of remote buttons
+void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
+{
+  Lpf2Hub *myRemoteHub = (Lpf2Hub *)hub;
+
+  Serial.print("sensorMessage callback for port: ");
+  Serial.println(portNumber, DEC);
+  if (deviceType == DeviceType::REMOTE_CONTROL_BUTTON)
+  {
+    ButtonState buttonState = myRemoteHub->parseRemoteButton(pData);
+    Serial.print("Buttonstate: ");
+    Serial.println((byte)buttonState, HEX);
+
+    switch (state)
+    {
+      case Init:
+        break;
+      case Menu1:
+        switch (buttonState)
+        {
+          case ButtonState::STOP:
+            controlMotorFuntion (portNumber, Stop, true);
+          break;
+
+          case ButtonState::UP:
+            controlMotorFuntion (portNumber, Forward, true);
+          break;
+
+          case ButtonState::DOWN:
+            controlMotorFuntion (portNumber, Backward, true);
+          break;
+
+          case ButtonState::RELEASED:
+            controlMotorFuntion (portNumber, Backward, false);
+          break;
+
+          default:
+          break;
+        }
+        break;
+      default:
+        if (portNumber == 0 && buttonState == ButtonState::UP)
+          updateSubState (true);
+        else if (portNumber == 0 && buttonState == ButtonState::DOWN)
+          updateSubState ();
+        else if (portNumber == 1 && buttonState == ButtonState::UP)
+          updateMotorFunction ();
+        else if (portNumber == 1 && buttonState == ButtonState::DOWN)
+          updateMotorFunction (true); 
+        break;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
   Remote[0].init();
+  PUHub[0].init();
 
   M5.begin(true, false, true);
   counter_delay(50);
@@ -466,38 +520,56 @@ void loop()
   // connect flow
   if (state == Init)
   {
-    if (RemoteInitState[0] == Connected)
+    if (Remote[0].isConnecting())
     {
-      configure_remote (0);
+      if (Remote[0].getHubType() == HubType::POWERED_UP_REMOTE)
+      {
+        //This is the right device
+        if (!Remote[0].connectHub())
+        {
+          Serial.println("Unable to connect to hub");
+        }
+        else
+        {
+          Remote[0].setLedColor(GREEN);
+          Serial.println("Remote connected.");
+        }
+      }
       Remote[0].setLedColor(GREEN);
       setBuff(1, 0, 255, 0);
       setBuff(2, 0, 255, 0, true);
       stateMax = Menu3;
       RemoteInitState[0] = Finished;
+    }
+
+    if (PUHub[0].isConnecting())
+    {
+      if (PUHub[0].getHubType() == HubType::POWERED_UP_HUB)
+      {
+        PUHub[0].connectHub();
+        PUHub[0].setLedColor(GREEN);
+        Serial.println("powered up hub connected.");
+        PUHub[0].setLedColor(GREEN);
+        setBuff(5, 0, 255, 0);
+        setBuff(10, 0, 255, 0, true);
+        subStateMax = Menu2;
+      }
+    }
+  
+    if (!Remote[0].isConnected())
+    {
+      Remote[0].init();
+    }
+
+      if (!PUHub[0].isConnected())
+    {
       PUHub[0].init();
-    }
-
-    if (Remote[0].isConnecting() && RemoteInitState[0] == notConnected)
-    {
-      connect_remote (0);
-    }
-
-    if (RemoteInitState[0] == Finished && HubInitState[0] == Connected)
-    {
-      configure_hub (0);
-      PUHub[0].setLedColor(GREEN);
-      setBuff(5, 0, 255, 0);
-      setBuff(10, 0, 255, 0, true);
-      subStateMax = Menu2;
-    }
-
-    if (RemoteInitState[0] == Finished && HubInitState[0] == notConnected)
-    {
-      connect_hub (0);
     }
 
     if (M5.Btn.wasPressed())
     {
+      configure_hub (0);
+      configure_remote (0);
       updateState();
     }
 
@@ -511,75 +583,9 @@ void loop()
       case Init:
         break;
       case Menu1:
-        if (Remote[0].isLeftRemoteStopButtonPressed())
-        {
-          if (RemoteState[0].LeftPressed == false)
-            controlMotorFuntion (0, Stop, true);
-          RemoteState[0].LeftPressed = true;
-        }
-        else if (Remote[0].isLeftRemoteDownButtonPressed())
-        {
-          if (RemoteState[0].LeftPressed == false)
-            controlMotorFuntion (0, Backward, true);
-          RemoteState[0].LeftPressed = true;
-        }
-        else if (Remote[0].isLeftRemoteUpButtonPressed())
-        {
-          if (RemoteState[0].LeftPressed == false)
-            controlMotorFuntion (0, Forward, true);
-          RemoteState[0].LeftPressed = true;
-        }
-        else if (RemoteState[0].LeftPressed)
-        {
-          if (RemoteState[0].LeftPressed == true)
-            controlMotorFuntion (0, Backward, false);
-          RemoteState[0].LeftPressed = false;
-        }
-
-        if (Remote[0].isRightRemoteStopButtonPressed())
-        {
-          if (RemoteState[0].RightPressed == false)
-            controlMotorFuntion (1, Stop, true);
-          RemoteState[0].RightPressed = true;
-        }
-        else if (Remote[0].isRightRemoteDownButtonPressed())
-        {
-          if (RemoteState[0].RightPressed == false)
-            controlMotorFuntion (1, Backward, true);
-          RemoteState[0].RightPressed = true;
-        }
-        else if (Remote[0].isRightRemoteUpButtonPressed())
-        {
-          if (RemoteState[0].RightPressed == false)
-            controlMotorFuntion (1, Forward, true);
-          RemoteState[0].RightPressed = true;
-        }
-        else if (RemoteState[0].RightPressed)
-        {
-          if (RemoteState[0].RightPressed == true)
-            controlMotorFuntion (1, Backward, false);
-          RemoteState[0].RightPressed = false;
-        }
-
         break;
       default:
-        if (Remote[0].isLeftRemoteUpButtonPressed())
-        {
-          updateSubState (true);
-        }
-        else if (Remote[0].isLeftRemoteDownButtonPressed())
-        {
-          updateSubState ();
-        }
-        else if (Remote[0].isRightRemoteUpButtonPressed())
-        {
-          updateMotorFunction ();
-        }
-        else if (Remote[0].isRightRemoteDownButtonPressed())
-        {
-          updateMotorFunction (true);
-        }
-
+      
         // Animation
         if (update_counter ())
         {
