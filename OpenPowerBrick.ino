@@ -3,7 +3,7 @@
 
    Plattform: ESP32 Pico Kit
 
-   (c) Copyright 2020 -  Richard Jeske
+   2021 by Richard Jeske
    Released GPL 2.0 Licence
 
 */
@@ -16,10 +16,9 @@ Lpf2Hub  PUHub[2];
 
 byte RemotePortLeft[2] = { (byte)PoweredUpRemoteHubPort::LEFT, (byte)PoweredUpRemoteHubPort::LEFT};
 byte RemotePortRight[2] = { (byte)PoweredUpRemoteHubPort::RIGHT, (byte)PoweredUpRemoteHubPort::RIGHT};
+byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B };
 
-byte PUportA[2] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::A };
-byte PUportB[2] = { (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::B };
-
+#include "hub.h"
 #include "menu.h"
 #include "motor.h"
 #include "motorfunctions.h"
@@ -50,6 +49,7 @@ uint8_t timer_counter_step = 0;
 
 MenuState     state = Init;
 MenuState     substate = Init;
+hubType       hub = noHub;
 
 uint8_t DisBuff[2 + 5 * 5 * 3];
 
@@ -221,26 +221,18 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
   }
 }
 
+
 void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue)
 {
   int Speed =  (100 * currentValue) / maxValue;
 
   Serial.println("setMotorSpeed ID:" + String(id) + " Speed:" + String(currentValue));
 
-  switch (id)
+  if (id < subStateMax)
   {
-    case 0:
-      PUHub[0].setBasicMotorSpeed(PUportA[0], Speed);
-      break;
-    case 1:
-      PUHub[0].setBasicMotorSpeed(PUportB[0], Speed);
-      break;
-    case 2:
-      PUHub[1].setBasicMotorSpeed(PUportA[1], Speed);
-      break;
-    case 3:
-      PUHub[1].setBasicMotorSpeed(PUportB[1], Speed);
-      break;
+    PUHub[0].setBasicMotorSpeed(PUport[id], Speed);
+      // Todo: use hubType for second PU Hub
+      // PUHub[1].setBasicMotorSpeed(PUport[id], Speed);
   }
 }
 
@@ -287,14 +279,15 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
       SettingsMatrix[id][i - 1].currentValue = newValue;
       setMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps);
 
+      // Todo: use animation values
       if (newValue == 0)
-        setBuff (5 * (1 + id) + i, 0, 0, 0, true);
+        setBuff (5 * i + id + 1, 0, 0, 0, true);
 
       if (newValue > 0)
-        setBuff (5 * (1 + id) + i, 0, 255, 0, true);
+        setBuff (5 * i + id + 1, 0, 255, 0, true);
 
       if (newValue < 0)
-        setBuff (5 * (1 + id) + i, 255, 0, 0, true);
+        setBuff (5 * i + id + 1, 255, 0, 0, true);
     }
   }
 }
@@ -368,8 +361,8 @@ void updateState ()
 
 void configure_remote (uint8_t id)
 {
-  Remote[id].activatePortDevice(PUportA[id], remoteCallback);
-  Remote[id].activatePortDevice(PUportB[id], remoteCallback);
+  Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback);
+  Remote[id].activatePortDevice(RemotePortRight[id], remoteCallback);
   Remote[id].setLedColor(WHITE);
   RemoteInitState[id] = Configured;
 }
@@ -553,6 +546,24 @@ void loop()
         setBuff(5, 0, 255, 0);
         setBuff(10, 0, 255, 0, true);
         subStateMax = Menu2;
+      }
+      if (PUHub[0].getHubType() == HubType::CONTROL_PLUS_HUB)
+      {
+        PUHub[0].connectHub();
+        PUHub[0].setLedColor(GREEN);
+        Serial.println("control plus hub connected.");
+        PUHub[0].setLedColor(GREEN);
+        setBuff(5, 0, 255, 0);
+        setBuff(10, 0, 255, 0);
+        setBuff(15, 0, 255, 0);
+        setBuff(20, 0, 255, 0, true);
+        subStateMax = Menu4;
+
+        // Switch Port Configuration to Control+
+        PUport[0] = (byte)ControlPlusHubPort::A;
+        PUport[1] = (byte)ControlPlusHubPort::B;
+        PUport[2] = (byte)ControlPlusHubPort::C;
+        PUport[3] = (byte)ControlPlusHubPort::D;
       }
     }
   
