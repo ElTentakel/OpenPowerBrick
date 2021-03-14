@@ -1,7 +1,34 @@
 #ifndef MOTORFUNCTIONS_H
 #define MOTORFUNCTIONS_H
 
-#include "motor.h"
+#include <stdint.h> 
+
+enum motorFunction  { No = 0,
+                      FullForward = 1,
+                      FullBackward = 2,
+                      StepForward = 3,
+                      StepBackward = 4,
+            StepForward8 = 5,
+            StepBackward8 = 6,
+                      motorFunctionLast
+                    };
+
+enum motorMode      { Off = 0,
+                      Push,
+                      PushRamp,
+                      ToggleStep
+                    };
+
+enum motorDirection { Forward,
+                      Backward,
+                      Stop
+                    };
+
+typedef struct sFunctionParameters {
+  motorFunction   Function;
+  int8_t          Steps;
+  uint8_t         Graphics [9][12];
+} tFunctionParameters;
 
 static const tFunctionParameters functionParameters [motorFunctionLast] =
 {
@@ -58,5 +85,11 @@ static const tFunctionParameters functionParameters [motorFunctionLast] =
     }
   }
 };
+
+int8_t MotorFunctionFullForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
+int8_t MotorFunctionFullBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
+int8_t MotorFunctionStepForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
+int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
+int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
 
 #endif
