@@ -246,9 +246,27 @@ void updateState ()
 
 void configure_remote (uint8_t id)
 {
-  Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback);
-  Remote[id].activatePortDevice(RemotePortRight[id], remoteCallback);
-  Remote[id].setLedColor(WHITE);
+  Serial.println("Registering remote:" + String(static_cast<uint8_t>(id)));
+  switch (id)
+  {
+    case 0:
+      Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback);
+      delay(50);
+      Remote[id].activatePortDevice(RemotePortRight[id], remoteCallback);
+      delay(50);
+      Remote[id].setLedColor(WHITE);
+      break;
+    case 1:
+      Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback2);
+      delay(50);
+      Remote[id].activatePortDevice (RemotePortRight[id], remoteCallback2);
+      delay(50);
+      Remote[id].setLedColor(YELLOW);
+      break;
+    default:
+      Serial.println("Error, unknown remote:");
+      break;
+  }
 }
 
 bool connect_remote (uint8_t id)
@@ -325,7 +343,6 @@ void InitAnimation ()
   }
 }
 
-// Todo: use two abstracted callbacl functions to identify remotes
 // callback function to handle updates of remote buttons
 void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
 {
@@ -380,6 +397,12 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
   }
 }
 
+// Wrapper for second Remote
+void remoteCallback2(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
+{
+  remoteCallback(hub, portNumber + 2, deviceType, pData);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -416,8 +439,8 @@ void loop()
       display_set(1, 0, 255, 0);
       display_set(2, 0, 255, 0, true);
       stateMax = Menu3;
-      // Todo: enable for registration of 2. Remote
-      //Remote[1].init();
+      // enable registration for 2. Remote
+      Remote[1].init();
     }
 
     if (Remote[1].isConnecting())
