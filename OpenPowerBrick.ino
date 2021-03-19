@@ -105,15 +105,6 @@ void updateMotorFunction (bool reverse = false)
   counter_delay(250);
 }
 
-void setMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub)
-{
-  int Speed =  (100 * currentValue) / maxValue;
-
-  Serial.println("setSimpleMotorSpeed ID:" + String(id) + " Speed:" + String(currentValue));
-
-  pPUHub->setBasicMotorSpeed(PUport[id], Speed);
-}
-
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 {
   Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
@@ -147,6 +138,14 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
         Serial.println("StepBackward8");
         newValue = MotorFunctionStepBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepBackward8].Steps);
         break;
+      case SteeringForward:
+        Serial.println("SteeringForward");
+        newValue = MotorFunctionFullForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[SteeringForward].Steps);
+        break;
+      case SteeringBackward:
+        Serial.println("SteeringBackward");
+        newValue = MotorFunctionFullBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[SteeringBackward].Steps);
+        break;
       default:
         newValue = SettingsMatrix[id][i - 1].currentValue;
         break;
@@ -158,12 +157,20 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
       
       if (id < subStateMax)
       {
-        //setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport);
-        setMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0]);
+        if ((SettingsMatrix[id][i - 1].Function == SteeringForward || 
+             SettingsMatrix[id][i - 1].Function == SteeringBackward) &&
+             MotorIsCalibrated (PUport[id])
+             )
+        {
+          // setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
+        }
+        else
+        {
+          // Todo: use hubType for second PU Hub
+          setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
+        }
       }
-      // Todo: use hubType for second PU Hub
-      // PUHub[0].setBasicMotorSpeed(PUport[id], Speed);
-
+ 
       // Todo: use animation values
       if (newValue == 0)
         display_set (5 * i + id + 1, 0, 0, 0, true);
@@ -474,6 +481,10 @@ void loop()
         PUHub[0].setLedColor(GREEN);
         display_set(5, 0, 255, 0);
         display_set(10, 0, 255, 0, true);
+
+        PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
+        PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
+        
         subStateMax = Menu2;
       }
       if (PUHub[0].getHubType() == HubType::CONTROL_PLUS_HUB)
@@ -486,13 +497,19 @@ void loop()
         display_set(10, 0, 255, 0);
         display_set(15, 0, 255, 0);
         display_set(20, 0, 255, 0, true);
-        subStateMax = Menu4;
 
         // Switch Port Configuration to Control+
         PUport[0] = (byte)ControlPlusHubPort::A;
         PUport[1] = (byte)ControlPlusHubPort::B;
         PUport[2] = (byte)ControlPlusHubPort::C;
         PUport[3] = (byte)ControlPlusHubPort::D;
+
+        PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
+        PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
+        PUHub[0].activatePortDevice(PUport[2], tachoMotorCallback);
+        PUHub[0].activatePortDevice(PUport[3], tachoMotorCallback);
+
+        subStateMax = Menu4;
       }
     }
   

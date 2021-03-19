@@ -8,8 +8,10 @@ enum motorFunction  { No = 0,
                       FullBackward = 2,
                       StepForward = 3,
                       StepBackward = 4,
-            StepForward8 = 5,
-            StepBackward8 = 6,
+                      StepForward8 = 5,
+                      StepBackward8 = 6,
+                      SteeringForward = 7,
+                      SteeringBackward = 8,
                       motorFunctionLast
                     };
 
@@ -82,6 +84,16 @@ static const tFunctionParameters functionParameters [motorFunctionLast] =
       [6] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,    0,  0,  0 },
       [7] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,  192,  0,  0 },
       [8] = {  64, 0,  0, 128,  0,  0, 192,  0,  0,  255,  0,  0 },
+    }
+  },
+  { SteeringForward, 1,  {
+      [0] = {  255,  255,  0,  255,  255,  0, 0,  0,  0, 0,  0,  0},
+      [1] = {  0,  0,  0, 0,  0,  0, 255,  255,  0,  255,  255,  0}
+    }
+  },
+  { SteeringBackward, 1, {
+      [0] = {  0,  0,  0, 0,  0,  0, 255,  255,  0,  255,  255,  0},
+      [1] = {  255, 255,  0,   255, 255,  0,   0, 0,  0,    0, 0,  0 }
     }
   }
 };
