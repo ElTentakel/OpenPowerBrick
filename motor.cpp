@@ -41,7 +41,7 @@ void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8
     if (MotorState[(int)portNumber] == motorInit)
     {
       Serial.println("motorCalibration");
-      MotorState[(int)portNumber] = motorCalibration;
+      MotorState[(int)portNumber] = motorReadyForCalibration;
     }
     rotation = myHub->parseTachoMotor(pData);
     MotorPosition[(int)portNumber] = rotation;
@@ -54,10 +54,33 @@ void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8
   }
 }
 
-bool MotorIsCalibrated (byte port)
+bool MotorStartCalibration (int port)
 {
   bool ret = false;
-  if (MotorState [(int)port] == motorCalibrated)
+  if (MotorState [port] == motorReadyForCalibration)
+  {
+    MotorState [port] = motorStartCalibration;
+    ret = true;
+  }
+  return ret;
+}
+
+bool MotorIsCalibrated (int port)
+{
+  bool ret = false;
+  if (MotorState [port] == motorCalibrated)
+  {
+    ret = true;
+  }
+  return ret;
+}
+
+bool MotorIsCalibrating (int port)
+{
+  bool ret = false;
+  if (MotorState [port] == motorStartCalibration ||
+      MotorState [port] == motorNegativeCalibration ||
+      MotorState [port] == motorPositiveCalibration)
   {
     ret = true;
   }
@@ -98,9 +121,10 @@ bool MotorCalibrationStep (void *hub, byte portNumber)
   switch (MotorState [(int)portNumber])
   {
     case motorInit:
+    case motorReadyForCalibration:
       // wait for motor
       break;
-    case motorCalibration:
+    case motorStartCalibration:
       MotorState [(int)portNumber] = motorNegativeCalibration;
       MotorCalibrationLeft[(int)portNumber] = MotorPosition[(int)portNumber] + 20;
       myHub->setTachoMotorSpeedForTime(portNumber, -70, 300, 100);

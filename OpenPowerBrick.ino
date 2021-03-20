@@ -234,6 +234,22 @@ void updateState ()
   else
   {
     state = Menu1;
+
+    // Do calibration stuff for Servos
+    for (int j = 0; j < subStateMax; j++)
+    { 
+      for (int i = 0; i < stateMax; i++)
+      {
+        if ((SettingsMatrix[i][j].Function == SteeringForward ||
+            SettingsMatrix[i][j].Function == SteeringBackward)  &&
+            !MotorIsCalibrated (PUport[i]) &&
+            !MotorIsCalibrating (PUport[i]))
+        {
+            MotorStartCalibration (PUport[i]);
+            break;
+        }
+      }
+    }
   }
 
   if (state != Init && state != Menu1)
@@ -404,6 +420,17 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
   }
 }
 
+void check_motor_calibration ()
+{
+  for (int i = 0; i < subStateMax; i++)
+  {
+    if (MotorIsCalibrating(PUport[i]))
+    {
+      MotorCalibrationStep (&PUHub[0], PUport[i]);
+    }
+  }
+}
+
 // Wrapper for second Remote
 void remoteCallback2(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
 {
@@ -544,9 +571,10 @@ void loop()
       case Init:
         break;
       case Menu1:
+        check_motor_calibration();
         break;
       default:
-      
+        check_motor_calibration();
         // Animation
         if (update_counter ())
         {
