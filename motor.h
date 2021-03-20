@@ -22,6 +22,7 @@ enum MotorState_      { motorInit = 0,
                       };
 
 void setSimpleMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub, byte PUport);
+void setSteeringMotorPosition (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub, byte PUport);
 
 bool MotorStartCalibration (int port);
 bool MotorIsCalibrating (int port);

@@ -14,14 +14,32 @@ void setSimpleMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2
 
   pPUHub->setBasicMotorSpeed(PUport, Speed);
 }
-/*
-void setSteeringMotorPosition (unsigned int value int8_t maxValue, Lpf2Hub* pPUHub, byte PUport)
+
+int calculateServoCenter (int min, int max)
 {
-  int Angle; 
-  // Todo: calculate motor position
-  // myHub->setAbsoluteMotorPosition(portNumber, 100, 0);
+  return ((min + max)/2);
 }
-*/
+
+// Todo: enhance function to suppport more steps!
+void setSteeringMotorPosition (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub, byte PUport)
+{
+  int angle = 0;
+  if (currentValue == -1)
+  {
+    angle = MotorCalibrationLeft[id];
+  }
+  else if (currentValue == 1)
+  {
+    angle = MotorCalibrationRight[id];
+  }
+  else if (currentValue == 0)
+  {
+    angle = calculateServoCenter (MotorCalibrationLeft[id], MotorCalibrationRight[id]);
+  }
+  Serial.println("setSteeringMotorPosition ID:" + String(id) + " Angle:" + String(angle));
+  pPUHub->setAbsoluteMotorPosition(PUport, 100, angle);
+}
+
 // callback function to handle updates of sensor values
 void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
 {

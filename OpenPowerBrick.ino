@@ -162,7 +162,7 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
              MotorIsCalibrated (PUport[id])
              )
         {
-          // setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
+          setSteeringMotorPosition (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
         }
         else
         {
