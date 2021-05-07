@@ -154,23 +154,23 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
     if (newValue != SettingsMatrix[id][i - 1].currentValue)
     {
       SettingsMatrix[id][i - 1].currentValue = newValue;
-      
+
       if (id < subStateMax)
       {
-        if ((SettingsMatrix[id][i - 1].Function == SteeringForward || 
+        if ((SettingsMatrix[id][i - 1].Function == SteeringForward ||
              SettingsMatrix[id][i - 1].Function == SteeringBackward) &&
-             MotorIsCalibrated (PUport[id])
-             )
+            MotorIsCalibrated (PUport[i - 1])
+           )
         {
-          setSteeringMotorPosition (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
+          setSteeringMotorPosition (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[i - 1]);
         }
         else
         {
           // Todo: use hubType for second PU Hub
-          setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[id]);
+          setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[i - 1]);
         }
       }
- 
+
       // Todo: use animation values
       if (newValue == 0)
         display_set (5 * i + id + 1, 0, 0, 0, true);
@@ -236,20 +236,26 @@ void updateState ()
     state = Menu1;
 
     // Do calibration stuff for Servos
-    for (int j = 0; j < subStateMax; j++)
-    { 
-      for (int i = 0; i < stateMax; i++)
+    for (int j = 1; j <= subStateMax; j++)
+    {
+      Serial.println("");
+      Serial.print("Sub:" + String (j) + ":");
+
+      for (int i = 2; i <= stateMax; i++)
       {
-        if ((SettingsMatrix[i][j].Function == SteeringForward ||
-            SettingsMatrix[i][j].Function == SteeringBackward)  &&
-            !MotorIsCalibrated (PUport[i]) &&
-            !MotorIsCalibrating (PUport[i]))
+        Serial.print(String(SettingsMatrix[i-2][j-1].Function) + "," );
+
+        if ((SettingsMatrix[i-2][j-1].Function == SteeringForward ||
+             SettingsMatrix[i-2][j-1].Function == SteeringBackward)  &&
+            !MotorIsCalibrated (PUport[j-1]) &&
+            !MotorIsCalibrating (PUport[j-1]))
         {
-            MotorStartCalibration (PUport[i]);
-            break;
+          MotorStartCalibration (PUport[j-1]);
+          break;
         }
       }
     }
+    Serial.println("");
   }
 
   if (state != Init && state != Menu1)
@@ -388,22 +394,22 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
         {
           case ButtonState::STOP:
             controlMotorFuntion (portNumber, Stop, true);
-          break;
+            break;
 
           case ButtonState::UP:
             controlMotorFuntion (portNumber, Forward, true);
-          break;
+            break;
 
           case ButtonState::DOWN:
             controlMotorFuntion (portNumber, Backward, true);
-          break;
+            break;
 
           case ButtonState::RELEASED:
             controlMotorFuntion (portNumber, Backward, false);
-          break;
+            break;
 
           default:
-          break;
+            break;
         }
         break;
       default:
@@ -414,7 +420,7 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
         else if (portNumber == 1 && buttonState == ButtonState::UP)
           updateMotorFunction ();
         else if (portNumber == 1 && buttonState == ButtonState::DOWN)
-          updateMotorFunction (true); 
+          updateMotorFunction (true);
         break;
     }
   }
@@ -511,7 +517,7 @@ void loop()
 
         PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
         PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
-        
+
         subStateMax = Menu2;
       }
       if (PUHub[0].getHubType() == HubType::CONTROL_PLUS_HUB)
@@ -539,7 +545,7 @@ void loop()
         subStateMax = Menu4;
       }
     }
-  
+
     if (!Remote[0].isConnected())
     {
       Remote[0].init();
