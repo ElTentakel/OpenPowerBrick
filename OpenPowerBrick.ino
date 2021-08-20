@@ -101,83 +101,83 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
   Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
 
   int8_t newValue;
-  for ( uint8_t i = 1; i <= subStateMax; i++)
+  for ( uint8_t i = 0; i <= subStateMax - 1; i++)
   {
-    switch (getSettingsFunction(id,i - 1))
+    switch (getSettingsFunction(id,i))
     {
       case FullForward:
         Serial.println("FullForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[FullForward].Steps);
+        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullForward].Steps);
         break;
       case FullBackward:
         Serial.println("FullBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[FullBackward].Steps);
+        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullBackward].Steps);
         break;
       case StepForward:
         Serial.println("StepForward");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepForward].Steps);
+        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward].Steps);
         break;
       case StepBackward:
         Serial.println("StepBackward");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepBackward].Steps);
+        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward].Steps);
         break;
       case StepForward8:
         Serial.println("StepForward8");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepForward8].Steps);
+        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward8].Steps);
         break;
       case StepBackward8:
         Serial.println("StepBackward8");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepBackward8].Steps);
+        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward8].Steps);
         break;
       case SteeringForward:
         Serial.println("SteeringForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[SteeringForward].Steps);
+        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringForward].Steps);
         break;
       case SteeringBackward:
         Serial.println("SteeringBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
+        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
         break;
       default:
-        newValue = getSettingsCurrentValue(id,i - 1);
+        newValue = getSettingsCurrentValue(id,i);
         break;
     }
 
-    if (setSettingsCurrentValue(id,i - 1, newValue))
+    if (setSettingsCurrentValue(id,i, newValue))
     {
-      Serial.println("set value [" + String(static_cast<uint8_t>(id)) + "," + String(static_cast<uint8_t>(i - 1)) + "]=" +String(newValue));
+      Serial.println("set value [" + String(static_cast<uint8_t>(id)) + "," + String(static_cast<uint8_t>(i)) + "]=" +String(newValue));
 
       if (id < subStateMax)
       {
-        if ((getSettingsFunction(id,i - 1) == SteeringForward ||
-             getSettingsFunction(id,i - 1) == SteeringBackward) &&
-             MotorIsCalibrated (PUport[i - 1])
+        if ((getSettingsFunction(id,i) == SteeringForward ||
+             getSettingsFunction(id,i) == SteeringBackward) &&
+             MotorIsCalibrated (PUport[i])
            )
         {
-          setSteeringMotorPosition (i - 1, newValue, functionParameters[getSettingsFunction (id, i - 1)].Steps, &PUHub[0], PUport[i - 1]);
+          setSteeringMotorPosition (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, &PUHub[0], PUport[i]);
         }
         else
         {
           // Todo: use hubType for second PU Hub
-          setSimpleMotorSpeed (i - 1, newValue, functionParameters[getSettingsFunction (id, i - 1)].Steps, &PUHub[0], PUport[i - 1]);
+          setSimpleMotorSpeed (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, &PUHub[0], PUport[i]);
         }
       }
 
       // Todo: use animation values
       if (newValue == 0)
-        display_set (5 * i + id + 1, 0, 0, 0, true);
+        display_set (i+1,id+1, 0, 0, 0, true);
 
       if (newValue > 0)
-        display_set (5 * i + id + 1, 0, 255, 0, true);
+        display_set (i+1,id+1, 0, 255, 0, true);
 
       if (newValue < 0)
-        display_set (5 * i + id + 1, 255, 0, 0, true);
+        display_set (i+1,id+1, 255, 0, 0, true);
     }
   }
 }
 
 void updateSubState (bool reverse = false)
 {
-  display_set (static_cast<uint8_t>(substate) * 5, 0, 0, 0, true);
+  display_set (static_cast<uint8_t>(substate), 0, 0, 0, 0, true);
 
   if (reverse == false)
   {
@@ -203,7 +203,7 @@ void updateSubState (bool reverse = false)
   }
 
   Serial.println("substate" + String(static_cast<uint8_t>(substate)));
-  display_set (static_cast<uint8_t>(substate) * 5, 255, 255, 255, true);
+  display_set (static_cast<uint8_t>(substate), 0, 255, 255, 255, true);
 
   for (int i = 0; i < subStateMax; i++)
   {
@@ -263,7 +263,7 @@ void updateState ()
   }
 
   Serial.println("State" + String(static_cast<uint8_t>(state)));
-  display_set (static_cast<uint8_t>(state) - 1, 255, 255, 255, true);
+  display_set (0, static_cast<uint8_t>(state) - 1, 255, 255, 255, true);
 }
 
 void configure_remote (uint8_t id)
@@ -295,8 +295,8 @@ bool connect_remote (uint8_t id)
 {
   // 0: 1, 2
   // 1: 3, 4
-  display_set(id * 2 + 1 , 64, 64, 64);
-  display_set(id * 2 + 2 , 64, 64, 64, true);
+  display_set(0, id * 2 + 1 , 64, 64, 64);
+  display_set(0, id * 2 + 2 , 64, 64, 64, true);
   Remote[id].connectHub();
 
   if (Remote[id].isConnected())
@@ -307,10 +307,10 @@ bool connect_remote (uint8_t id)
   }
   else
   {
-    display_set(1, 255, 000, 0);
-    display_set(2, 255, 000, 0);
-    display_set(3, 255, 000, 0);
-    display_set(4, 255, 000, 0, true);
+    display_set(0, 1, 255, 000, 0);
+    display_set(0, 2, 255, 000, 0);
+    display_set(0, 3, 255, 000, 0);
+    display_set(0, 4, 255, 000, 0, true);
     Serial.println("Failed to connect to Remote");
     return false;
   }
@@ -321,13 +321,12 @@ void configure_hub (uint8_t id)
   HubInitState[id] = Configured;
 }
 
-
 bool connect_hub (uint8_t id)
 {
   // 0: 1, 2
   // 1: 3, 4
-  display_set(id * 5 + 5 , 64, 64, 64);
-  display_set(id * 5 + 10 , 64, 64, 64, true);
+  display_set(1, 0, 64, 64, 64);
+  display_set(2, 0, 64, 64, 64, true);
   PUHub[id].connectHub();
 
   if (PUHub[id].isConnected())
@@ -339,10 +338,10 @@ bool connect_hub (uint8_t id)
   }
   else
   {
-    display_set(5, 255, 000, 0);
-    display_set(10, 255, 000, 0);
-    display_set(15, 255, 000, 0);
-    display_set(20, 255, 000, 0, true);
+    display_set(1, 0, 255, 000, 0);
+    display_set(2, 0, 255, 000, 0);
+    display_set(3, 0, 255, 000, 0);
+    display_set(4, 0, 255, 000, 0, true);
     Serial.println("Failed to connect to Remote");
     return false;
   }
@@ -355,12 +354,12 @@ void InitAnimation ()
     if (initAnimationState)
     {
       initAnimationState = false;
-      display_set(0, 0, 0, 0, true);
+      display_set(0, 0, 0, 0, 0, true);
     }
     else
     {
       initAnimationState = true;
-      display_set(0, 0, 0, 255, true);
+      display_set(0, 0, 0, 0, 255, true);
     }
   }
 }
@@ -481,8 +480,8 @@ void loop()
         }
       }
       Remote[0].setLedColor(GREEN);
-      display_set(1, 0, 255, 0);
-      display_set(2, 0, 255, 0, true);
+      display_set(0, 1, 0, 255, 0);
+      display_set(0, 2, 0, 255, 0, true);
       stateMax = Menu3;
       // enable registration for 2. Remote
       Remote[1].init();
@@ -504,8 +503,8 @@ void loop()
         }
       }
       Remote[1].setLedColor(GREEN);
-      display_set(3, 0, 255, 0);
-      display_set(4, 0, 255, 0, true);
+      display_set(0, 3, 0, 255, 0);
+      display_set(0, 4, 0, 255, 0, true);
       stateMax = Menu5;
     }
 
@@ -517,8 +516,8 @@ void loop()
         PUHub[0].setLedColor(GREEN);
         Serial.println("powered up hub connected.");
         PUHub[0].setLedColor(GREEN);
-        display_set(5, 0, 255, 0);
-        display_set(10, 0, 255, 0, true);
+        display_set(1, 0, 0, 255, 0);
+        display_set(2, 0, 0, 255, 0, true);
 
         PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
         PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
@@ -531,10 +530,10 @@ void loop()
         PUHub[0].setLedColor(GREEN);
         Serial.println("control plus hub connected.");
         PUHub[0].setLedColor(GREEN);
-        display_set(5, 0, 255, 0);
-        display_set(10, 0, 255, 0);
-        display_set(15, 0, 255, 0);
-        display_set(20, 0, 255, 0, true);
+        display_set(1, 0, 0, 255, 0);
+        display_set(2, 0, 0, 255, 0);
+        display_set(3, 0, 0, 255, 0);
+        display_set(4, 0, 0, 255, 0, true);
 
         // Switch Port Configuration to Control+
         PUport[0] = (byte)ControlPlusHubPort::A;

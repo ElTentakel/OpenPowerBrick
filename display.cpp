@@ -7,11 +7,12 @@ void display_init(void)
   M5.dis.displaybuff(DisBuff);
 }
 
-void display_set(const uint8_t Pos, const uint8_t Rdata, const uint8_t Gdata, const uint8_t Bdata, const bool updateBuff)
+void display_set(const uint8_t row, const uint8_t col, const uint8_t Rdata, const uint8_t Gdata, const uint8_t Bdata, const bool updateBuff)
 {
-  DisBuff[2 + Pos * 3 + 0] = Rdata;
-  DisBuff[2 + Pos * 3 + 1] = Gdata;
-  DisBuff[2 + Pos * 3 + 2] = Bdata;
+  const uint8_t pos = row * 5 + col;
+  DisBuff[2 + pos * 3 + 0] = Rdata;
+  DisBuff[2 + pos * 3 + 1] = Gdata;
+  DisBuff[2 + pos * 3 + 2] = Bdata;
 
   if (updateBuff)
   {
@@ -26,7 +27,7 @@ void display_setRowArray (const uint8_t Row, const uint8_t Start, const uint8_t 
   {
     if (i < (Start + Lenght))
     {
-      display_set (Row * 5 + i, Array[j++], Array[j++], Array[j++]);
+      display_set (Row, i, Array[j++], Array[j++], Array[j++]);
     }
   }
 
@@ -41,8 +42,11 @@ void display_clear(void)
   DisBuff[0] = 0x05;
   DisBuff[1] = 0x05;
 
-  for (int i = 0; i < 25; i++)
-  {
-    display_set (i, 0, 0, 0);
+  for (int i = 0; i < 5; i++)
+  {  
+    for (int j = 0; j < 5; j++)
+    {
+      display_set (i, j, 0, 0, 0);
+    }
   }
 }
