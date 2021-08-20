@@ -23,6 +23,7 @@ byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)P
 #include "motor.h"
 #include "motorfunctions.h"
 #include "display.h"
+#include "settings.h"
 
 bool initAnimationState = false;
 InitState HubInitState[2] = {notConnected, notConnected};
@@ -35,11 +36,7 @@ typedef struct sRemoteState
 
 tRemoteState RemoteState[2];
 
-tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
-  [1] = {{ No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }, { No, 0, 0 }},
-  [2] = {{ No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }},
-  [3] = {{ No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }}
-};
+// remoteButton = state - 2, hubPort = substate - 1
 
 MenuState stateMax = Menu1;
 MenuState subStateMax = Init;
@@ -69,11 +66,9 @@ bool update_counter ()
   return false;
 }
 
-
-
-void updateMotorFunction (bool reverse = false)
+void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse = false)
 {
-  motorFunction function = SettingsMatrix [state - 2][substate - 1].Function;
+  motorFunction function = getSettingsFunction(buttonId, portId);
 
   if (reverse == false)
   {
@@ -97,12 +92,8 @@ void updateMotorFunction (bool reverse = false)
       function = motorFunctionMax;
     }
   }
-
-  Serial.println("motor" + String(static_cast<uint8_t>(substate)));
-  display_setRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
-  SettingsMatrix [state - 2][substate - 1].Function = function;
-  timer_counter_step = 0;
-  counter_delay(250);
+  setSettingsFunction (buttonId, portId, function);
+  Serial.println("set function [" + String(static_cast<uint8_t>(buttonId)) + "," + String(static_cast<uint8_t>(portId)) + "]=" +String(function));
 }
 
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
@@ -112,62 +103,62 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
   int8_t newValue;
   for ( uint8_t i = 1; i <= subStateMax; i++)
   {
-    switch (SettingsMatrix[id][i - 1].Function)
+    switch (getSettingsFunction(id,i - 1))
     {
       case FullForward:
         Serial.println("FullForward");
-        newValue = MotorFunctionFullForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[FullForward].Steps);
+        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[FullForward].Steps);
         break;
       case FullBackward:
         Serial.println("FullBackward");
-        newValue = MotorFunctionFullBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[FullBackward].Steps);
+        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[FullBackward].Steps);
         break;
       case StepForward:
         Serial.println("StepForward");
-        newValue = MotorFunctionStepForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepForward].Steps);
+        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepForward].Steps);
         break;
       case StepBackward:
         Serial.println("StepBackward");
-        newValue = MotorFunctionStepBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepBackward].Steps);
+        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepBackward].Steps);
         break;
       case StepForward8:
         Serial.println("StepForward8");
-        newValue = MotorFunctionStepForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepForward8].Steps);
+        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepForward8].Steps);
         break;
       case StepBackward8:
         Serial.println("StepBackward8");
-        newValue = MotorFunctionStepBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[StepBackward8].Steps);
+        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[StepBackward8].Steps);
         break;
       case SteeringForward:
         Serial.println("SteeringForward");
-        newValue = MotorFunctionFullForward  (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[SteeringForward].Steps);
+        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[SteeringForward].Steps);
         break;
       case SteeringBackward:
         Serial.println("SteeringBackward");
-        newValue = MotorFunctionFullBackward (SettingsMatrix[id][i - 1].currentValue, dir, buttonPressed, functionParameters[SteeringBackward].Steps);
+        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i - 1), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
         break;
       default:
-        newValue = SettingsMatrix[id][i - 1].currentValue;
+        newValue = getSettingsCurrentValue(id,i - 1);
         break;
     }
 
-    if (newValue != SettingsMatrix[id][i - 1].currentValue)
+    if (setSettingsCurrentValue(id,i - 1, newValue))
     {
-      SettingsMatrix[id][i - 1].currentValue = newValue;
+      Serial.println("set value [" + String(static_cast<uint8_t>(id)) + "," + String(static_cast<uint8_t>(i - 1)) + "]=" +String(newValue));
 
       if (id < subStateMax)
       {
-        if ((SettingsMatrix[id][i - 1].Function == SteeringForward ||
-             SettingsMatrix[id][i - 1].Function == SteeringBackward) &&
-            MotorIsCalibrated (PUport[i - 1])
+        if ((getSettingsFunction(id,i - 1) == SteeringForward ||
+             getSettingsFunction(id,i - 1) == SteeringBackward) &&
+             MotorIsCalibrated (PUport[i - 1])
            )
         {
-          setSteeringMotorPosition (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[i - 1]);
+          setSteeringMotorPosition (i - 1, newValue, functionParameters[getSettingsFunction (id, i - 1)].Steps, &PUHub[0], PUport[i - 1]);
         }
         else
         {
           // Todo: use hubType for second PU Hub
-          setSimpleMotorSpeed (i - 1, newValue, functionParameters[SettingsMatrix[id][i - 1].Function].Steps, &PUHub[0], PUport[i - 1]);
+          setSimpleMotorSpeed (i - 1, newValue, functionParameters[getSettingsFunction (id, i - 1)].Steps, &PUHub[0], PUport[i - 1]);
         }
       }
 
@@ -216,7 +207,7 @@ void updateSubState (bool reverse = false)
 
   for (int i = 0; i < subStateMax; i++)
   {
-    display_setRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state - 2][i].Function].Graphics[functionParameters[SettingsMatrix[state - 2][i].Function].Steps], true);
+    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
   }
   timer_counter_step = 0;
 
@@ -243,16 +234,18 @@ void updateState ()
 
       for (int i = 2; i <= stateMax; i++)
       {
-        Serial.print(String(SettingsMatrix[i-2][j-1].Function) + "," );
+        Serial.print(String(getSettingsFunction(i-2,j-1)));
 
-        if ((SettingsMatrix[i-2][j-1].Function == SteeringForward ||
-             SettingsMatrix[i-2][j-1].Function == SteeringBackward)  &&
+        if ((getSettingsFunction(i-2,j-1) == SteeringForward ||
+             getSettingsFunction(i-2,j-1) == SteeringBackward)  &&
             !MotorIsCalibrated (PUport[j-1]) &&
             !MotorIsCalibrating (PUport[j-1]))
         {
+          Serial.print("*");
           MotorStartCalibration (PUport[j-1]);
           break;
         }
+        Serial.print(",");
       }
     }
     Serial.println("");
@@ -265,7 +258,7 @@ void updateState ()
 
     for (int i = 0; i < subStateMax; i++)
     {
-      display_setRowArray(i + 1, 1, 4, functionParameters[SettingsMatrix[state - 2][i].Function].Graphics[functionParameters[SettingsMatrix[state - 2][i].Function].Steps], true);
+      display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
     }
   }
 
@@ -418,9 +411,21 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
         else if (portNumber == 0 && buttonState == ButtonState::DOWN)
           updateSubState ();
         else if (portNumber == 1 && buttonState == ButtonState::UP)
-          updateMotorFunction ();
+        {
+          updateMotorFunction (state - 2, substate - 1);
+          motorFunction function = getSettingsFunction (state - 2, substate - 1);
+          display_setRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
+          timer_counter_step = 0;
+          counter_delay(250);
+        }
         else if (portNumber == 1 && buttonState == ButtonState::DOWN)
-          updateMotorFunction (true);
+        {
+          updateMotorFunction (state - 2, substate - 1, true);
+          motorFunction function = getSettingsFunction (state - 2, substate - 1);
+          display_setRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
+          timer_counter_step = 0;
+          counter_delay(250);
+        }
         break;
     }
   }
@@ -585,11 +590,11 @@ void loop()
         if (update_counter ())
         {
           timer_counter_step++;
-          if (timer_counter_step > functionParameters[SettingsMatrix[state - 2][substate - 1].Function].Steps)
+          if (timer_counter_step > functionParameters[getSettingsFunction(state - 2, substate - 1)].Steps)
           {
             timer_counter_step = 0;
           }
-          display_setRowArray(substate, 1, 4, functionParameters[SettingsMatrix[state - 2][substate - 1].Function].Graphics[timer_counter_step], true);
+          display_setRowArray(substate, 1, 4, functionParameters[getSettingsFunction(state - 2, substate - 1)].Graphics[timer_counter_step], true);
         }
         break;
     }

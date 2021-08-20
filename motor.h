@@ -5,12 +5,6 @@
 #include "motorfunctions.h"
 #include "Lpf2Hub.h"
 
-typedef struct sSettings {
-  motorFunction   Function;
-  uint8_t         Strength;
-  int8_t          currentValue;
-} tSettings;
-
 enum MotorState_      { motorInit = 0,
                         motorNotConnected,
                         motorNoCalibration,
