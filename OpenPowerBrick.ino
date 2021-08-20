@@ -201,17 +201,8 @@ void updateSubState (bool reverse = false)
       substate = subStateMax;
     }
   }
-
   Serial.println("substate" + String(static_cast<uint8_t>(substate)));
   display_set (static_cast<uint8_t>(substate), 0, 255, 255, 255, true);
-
-  for (int i = 0; i < subStateMax; i++)
-  {
-    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
-  }
-  timer_counter_step = 0;
-
-  counter_delay(250);
 }
 
 void updateState ()
@@ -254,16 +245,22 @@ void updateState ()
   if (state != Init && state != Menu1)
   {
     substate = Init;
-    updateSubState ();
-
-    for (int i = 0; i < subStateMax; i++)
-    {
-      display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
-    }
+    updateSubState();
+    display_redrawFunctions();
+    timer_counter_step = 0;
+    counter_delay(250);
   }
 
   Serial.println("State" + String(static_cast<uint8_t>(state)));
   display_set (0, static_cast<uint8_t>(state) - 1, 255, 255, 255, true);
+}
+
+void display_redrawFunctions()
+{
+  for (int i = 0; i < subStateMax; i++)
+  {
+    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
+  }
 }
 
 void configure_remote (uint8_t id)
@@ -412,19 +409,14 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
         else if (portNumber == 1 && buttonState == ButtonState::UP)
         {
           updateMotorFunction (state - 2, substate - 1);
-          motorFunction function = getSettingsFunction (state - 2, substate - 1);
-          display_setRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
-          timer_counter_step = 0;
-          counter_delay(250);
         }
         else if (portNumber == 1 && buttonState == ButtonState::DOWN)
         {
           updateMotorFunction (state - 2, substate - 1, true);
-          motorFunction function = getSettingsFunction (state - 2, substate - 1);
-          display_setRowArray(substate, 1, 4, functionParameters[function].Graphics[functionParameters[function].Steps], true);
-          timer_counter_step = 0;
-          counter_delay(250);
         }
+        display_redrawFunctions();
+        timer_counter_step = 0;
+        counter_delay(250);
         break;
     }
   }
