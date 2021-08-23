@@ -77,7 +77,7 @@ bool display_updateAnimationCounter ()
   return false;
 }
 
-bool display_resetAnimationCounter ()
+void display_resetAnimationCounter ()
 {  
   display_timerCounter_step = 0;
 }

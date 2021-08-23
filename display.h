@@ -15,7 +15,7 @@ void display_redrawFunctions();
 void display_counterDelay (uint32_t d);
 void display_initAnimation();
 bool display_updateAnimationCounter ();
-bool display_resetAnimationCounter();
+void display_resetAnimationCounter();
 void display_drawFunctionAnimation();
 
 #endif

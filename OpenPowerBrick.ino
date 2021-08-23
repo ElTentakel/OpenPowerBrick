@@ -8,100 +8,14 @@
 
 */
 
-#include "Lpf2Hub.h"
 #include "M5Atom.h"
-
-Lpf2Hub  Remote[2];
-Lpf2Hub  PUHub[2];
-
-byte RemotePortLeft[2] = { (byte)PoweredUpRemoteHubPort::LEFT, (byte)PoweredUpRemoteHubPort::LEFT};
-byte RemotePortRight[2] = { (byte)PoweredUpRemoteHubPort::RIGHT, (byte)PoweredUpRemoteHubPort::RIGHT};
-byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B };
-
 #include "hub.h"
+#include "remote.h"
 #include "menu.h"
 #include "motor.h"
 #include "motorfunctions.h"
 #include "display.h"
 #include "settings.h"
-
-InitState HubInitState[2] = {notConnected, notConnected};
-hubType       hub = noHub;
-
-void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
-{
-  int8_t newValue;
-  for ( uint8_t i = 0; i <= getMaxPortId(); i++)
-  {
-    switch (getSettingsFunction(id,i))
-    {
-      case FullForward:
-        Serial.println("FullForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullForward].Steps);
-        break;
-      case FullBackward:
-        Serial.println("FullBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullBackward].Steps);
-        break;
-      case StepForward:
-        Serial.println("StepForward");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward].Steps);
-        break;
-      case StepBackward:
-        Serial.println("StepBackward");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward].Steps);
-        break;
-      case StepForward8:
-        Serial.println("StepForward8");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward8].Steps);
-        break;
-      case StepBackward8:
-        Serial.println("StepBackward8");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward8].Steps);
-        break;
-      case SteeringForward:
-        Serial.println("SteeringForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringForward].Steps);
-        break;
-      case SteeringBackward:
-        Serial.println("SteeringBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
-        break;
-      default:
-        newValue = getSettingsCurrentValue(id,i);
-        break;
-    }
-
-    if (setSettingsCurrentValue(id,i, newValue))
-    {
-      if (id <= getMaxRemoteButton())
-      {
-        if ((getSettingsFunction(id,i) == SteeringForward ||
-             getSettingsFunction(id,i) == SteeringBackward) &&
-             MotorIsCalibrated (PUport[i])
-           )
-        {
-          setSteeringMotorPosition (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, &PUHub[0], PUport[i]);
-        }
-        else
-        {
-          // Todo: use hubType for second PU Hub
-          setSimpleMotorSpeed (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, &PUHub[0], PUport[i]);
-        }
-      }
-
-      // Todo: use animation values
-      if (newValue == 0)
-        display_set (i+1,id+1, 0, 0, 0, true);
-
-      if (newValue > 0)
-        display_set (i+1,id+1, 0, 255, 0, true);
-
-      if (newValue < 0)
-        display_set (i+1,id+1, 255, 0, 0, true);
-    }
-  }
-}
 
 void updateState ()
 {
@@ -113,7 +27,7 @@ void updateState ()
     for (int j = 0; j <= getMaxPortId(); j++)
     {
       Serial.println("");
-      Serial.print("Sub:" + String (j) + ":");
+      Serial.print("Port:" + String (j) + ":");
 
       for (int i = 0; i <= getMaxRemoteButton(); i++)
       {
@@ -121,11 +35,11 @@ void updateState ()
 
         if ((getSettingsFunction(i,j) == SteeringForward ||
              getSettingsFunction(i,j) == SteeringBackward)  &&
-            !MotorIsCalibrated (PUport[j]) &&
-            !MotorIsCalibrating (PUport[j]))
+            !MotorIsCalibrated (getHubPort(j)) &&
+            !MotorIsCalibrating (getHubPort(j)))
         {
           Serial.print("*");
-          MotorStartCalibration (PUport[j]);
+          MotorStartCalibration (getHubPort(j));
           break;
         }
         Serial.print(",");
@@ -139,7 +53,7 @@ void updateState ()
     resetSubState();
     updateSubState();
     display_redrawFunctions();
-    display_resetAnimationCounter;
+    display_resetAnimationCounter();
     display_counterDelay(250);
   }
 
@@ -147,170 +61,11 @@ void updateState ()
   display_set (0, static_cast<uint8_t>(getState()) - 1, 255, 255, 255, true);
 }
 
-void configure_remote (uint8_t id)
-{
-  Serial.println("Registering remote:" + String(static_cast<uint8_t>(id)));
-  switch (id)
-  {
-    case 0:
-      Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback);
-      delay(50);
-      Remote[id].activatePortDevice(RemotePortRight[id], remoteCallback);
-      delay(50);
-      Remote[id].setLedColor(WHITE);
-      break;
-    case 1:
-      Remote[id].activatePortDevice(RemotePortLeft[id], remoteCallback2);
-      delay(50);
-      Remote[id].activatePortDevice (RemotePortRight[id], remoteCallback2);
-      delay(50);
-      Remote[id].setLedColor(YELLOW);
-      break;
-    default:
-      Serial.println("Error, unknown remote:");
-      break;
-  }
-}
-
-bool connect_remote (uint8_t id)
-{
-  // 0: 1, 2
-  // 1: 3, 4
-  display_set(0, id * 2 + 1 , 64, 64, 64);
-  display_set(0, id * 2 + 2 , 64, 64, 64, true);
-  Remote[id].connectHub();
-
-  if (Remote[id].isConnected())
-  {
-    Serial.println("Connected to Remote");
-    Remote[id].setLedColor(WHITE);
-    return true;
-  }
-  else
-  {
-    display_set(0, 1, 255, 000, 0);
-    display_set(0, 2, 255, 000, 0);
-    display_set(0, 3, 255, 000, 0);
-    display_set(0, 4, 255, 000, 0, true);
-    Serial.println("Failed to connect to Remote");
-    return false;
-  }
-}
-
-void configure_hub (uint8_t id)
-{
-  HubInitState[id] = Configured;
-}
-
-bool connect_hub (uint8_t id)
-{
-  // 0: 1, 2
-  // 1: 3, 4
-  display_set(1, 0, 64, 64, 64);
-  display_set(2, 0, 64, 64, 64, true);
-  PUHub[id].connectHub();
-
-  if (PUHub[id].isConnected())
-  {
-    HubInitState[id] = Connected;
-    Serial.println("Connected to Hub");
-    PUHub[id].setLedColor(WHITE);
-    return true;
-  }
-  else
-  {
-    display_set(1, 0, 255, 000, 0);
-    display_set(2, 0, 255, 000, 0);
-    display_set(3, 0, 255, 000, 0);
-    display_set(4, 0, 255, 000, 0, true);
-    Serial.println("Failed to connect to Remote");
-    return false;
-  }
-}
-
-// callback function to handle updates of remote buttons
-void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
-{
-  Lpf2Hub *myRemoteHub = (Lpf2Hub *)hub;
-
-  Serial.print("sensorMessage callback for port: ");
-  Serial.println(portNumber, DEC);
-  if (deviceType == DeviceType::REMOTE_CONTROL_BUTTON)
-  {
-    ButtonState buttonState = myRemoteHub->parseRemoteButton(pData);
-    Serial.print("Buttonstate: ");
-    Serial.println((byte)buttonState, HEX);
-
-    switch (getState())
-    {
-      case Init:
-        break;
-      case Menu1:
-        switch (buttonState)
-        {
-          case ButtonState::STOP:
-            controlMotorFuntion (portNumber, Stop, true);
-            break;
-
-          case ButtonState::UP:
-            controlMotorFuntion (portNumber, Forward, true);
-            break;
-
-          case ButtonState::DOWN:
-            controlMotorFuntion (portNumber, Backward, true);
-            break;
-
-          case ButtonState::RELEASED:
-            controlMotorFuntion (portNumber, Backward, false);
-            break;
-
-          default:
-            break;
-        }
-        break;
-      default:
-        if (portNumber == 0 && buttonState == ButtonState::UP)
-          updateSubState (true);
-        else if (portNumber == 0 && buttonState == ButtonState::DOWN)
-          updateSubState ();
-        else if (portNumber == 1 && buttonState == ButtonState::UP)
-        {
-          updateMotorFunction (getRemoteButton(), getPortId());
-        }
-        else if (portNumber == 1 && buttonState == ButtonState::DOWN)
-        {
-          updateMotorFunction (getRemoteButton(), getPortId(), true);
-        }
-        display_redrawFunctions();
-        display_resetAnimationCounter;
-        display_counterDelay(250);
-        break;
-    }
-  }
-}
-
-void check_motor_calibration ()
-{
-  for (int i = 0; i <= getMaxPortId(); i++)
-  {
-    if (MotorIsCalibrating(PUport[i]))
-    {
-      MotorCalibrationStep (&PUHub[0], PUport[i]);
-    }
-  }
-}
-
-// Wrapper for second Remote
-void remoteCallback2(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
-{
-  remoteCallback(hub, portNumber + 2, deviceType, pData);
-}
-
 void setup() {
   Serial.begin(115200);
 
-  Remote[0].init();
-  PUHub[0].init();
+  getRemote(0)->init();
+  getHub(0)->init();
 
   M5.begin(true, false, true);
   display_counterDelay(50);
@@ -322,109 +77,20 @@ void loop()
   // connect flow
   if (getState() == Init)
   {
-    if (Remote[0].isConnecting())
-    {
-      if (Remote[0].getHubType() == HubType::POWERED_UP_REMOTE)
-      {
-        //This is the right device
-        if (!Remote[0].connectHub())
-        {
-          Serial.println("Unable to connect to hub");
-        }
-        else
-        {
-          Remote[0].setLedColor(GREEN);
-          Serial.println("Remote 0 connected.");
-        }
-      }
-      Remote[0].setLedColor(GREEN);
-      display_set(0, 1, 0, 255, 0);
-      display_set(0, 2, 0, 255, 0, true);
-      setStateMax(Menu3);
-      // enable registration for 2. Remote
-      Remote[1].init();
-    }
 
-    if (Remote[1].isConnecting())
-    {
-      if (Remote[1].getHubType() == HubType::POWERED_UP_REMOTE)
-      {
-        //This is the right device
-        if (!Remote[1].connectHub())
-        {
-          Serial.println("Unable to connect to hub");
-        }
-        else
-        {
-          Remote[1].setLedColor(YELLOW);
-          Serial.println("Remote 1 connected.");
-        }
-      }
-      Remote[1].setLedColor(GREEN);
-      display_set(0, 3, 0, 255, 0);
-      display_set(0, 4, 0, 255, 0, true);
-      setStateMax(Menu5);
-    }
+    tryConnectRemotes();
+    tryConnectHubs();
 
-    if (PUHub[0].isConnecting())
-    {
-      if (PUHub[0].getHubType() == HubType::POWERED_UP_HUB)
-      {
-        PUHub[0].connectHub();
-        PUHub[0].setLedColor(GREEN);
-        Serial.println("powered up hub connected.");
-        PUHub[0].setLedColor(GREEN);
-        display_set(1, 0, 0, 255, 0);
-        display_set(2, 0, 0, 255, 0, true);
-
-        PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
-        PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
-
-        setSubStateMax(Menu2);
-      }
-      if (PUHub[0].getHubType() == HubType::CONTROL_PLUS_HUB)
-      {
-        PUHub[0].connectHub();
-        PUHub[0].setLedColor(GREEN);
-        Serial.println("control plus hub connected.");
-        PUHub[0].setLedColor(GREEN);
-        display_set(1, 0, 0, 255, 0);
-        display_set(2, 0, 0, 255, 0);
-        display_set(3, 0, 0, 255, 0);
-        display_set(4, 0, 0, 255, 0, true);
-
-        // Switch Port Configuration to Control+
-        PUport[0] = (byte)ControlPlusHubPort::A;
-        PUport[1] = (byte)ControlPlusHubPort::B;
-        PUport[2] = (byte)ControlPlusHubPort::C;
-        PUport[3] = (byte)ControlPlusHubPort::D;
-
-        PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
-        PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
-        PUHub[0].activatePortDevice(PUport[2], tachoMotorCallback);
-        PUHub[0].activatePortDevice(PUport[3], tachoMotorCallback);
-
-        setSubStateMax(Menu4);
-      }
-    }
-
-    if (!Remote[0].isConnected())
-    {
-      Remote[0].init();
-    }
-
-    if (!PUHub[0].isConnected())
-    {
-      PUHub[0].init();
-    }
+    connectedRemote(0);
+    connectedHub(0);
 
     if (M5.Btn.wasPressed())
     {
-      configure_hub (0);
-      configure_remote (0);
+      configureHub (0);
+      configureRemote (0);
       if (getMaxState() == Menu5)
       {
-        configure_remote (1);
+        configureRemote (1);
       }
       updateState();
     }
@@ -439,10 +105,10 @@ void loop()
       case Init:
         break;
       case Menu1:
-        check_motor_calibration();
+        checkMotorCalibration();
         break;
       default:
-        check_motor_calibration();
+        checkMotorCalibration();
         // Animation
         display_drawFunctionAnimation();
         break;

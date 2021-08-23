@@ -1,4 +1,6 @@
 #include "motor.h"
+#include "menu.h"
+#include "hub.h"
 
 MotorState_ MotorState[4] = {motorInit, motorInit, motorInit, motorInit};
 int MotorPosition[4] = {0,0,0,0};
@@ -72,6 +74,19 @@ void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8
   }
 }
 
+
+void checkMotorCalibration()
+{
+  for (int i = 0; i <= getMaxPortId(); i++)
+  {
+    if (MotorIsCalibrating(getHubPort(i)))
+    {
+      Serial.print(".");
+      MotorCalibrationStep (getHub(i), getHubPort(i));
+    }
+  }
+}
+
 bool MotorStartCalibration (int port)
 {
   bool ret = false;
@@ -126,7 +141,7 @@ bool MotorCalibrationStep (void *hub, byte portNumber)
 
   MotorCalibrationCounter[(int)portNumber] = 0;
 
-  /* Debug info
+
     Serial.print ((int)portNumber);
     Serial.print ("/");
     Serial.print (MotorPosition[(int)portNumber]);
@@ -134,7 +149,6 @@ bool MotorCalibrationStep (void *hub, byte portNumber)
     Serial.print (MotorCalibrationLeft[(int)portNumber]);
     Serial.print ("/");
     Serial.println (MotorCalibrationRight[(int)portNumber]);
-  */
 
   switch (MotorState [(int)portNumber])
   {

@@ -105,6 +105,6 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
 int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
 
 void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse = false);
-
+void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed);
 
 #endif
