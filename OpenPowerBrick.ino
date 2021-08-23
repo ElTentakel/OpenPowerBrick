@@ -28,7 +28,6 @@ byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)P
 bool initAnimationState = false;
 InitState HubInitState[2] = {notConnected, notConnected};
 
-motorFunction motorFunctionMax = static_cast<motorFunction>(static_cast<int>(motorFunctionLast) - 1);
 uint8_t timer_counter = 0;
 uint8_t timer_counter_step = 0;
 hubType       hub = noHub;
@@ -51,40 +50,8 @@ bool update_counter ()
   return false;
 }
 
-void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse = false)
-{
-  motorFunction function = getSettingsFunction(buttonId, portId);
-
-  if (reverse == false)
-  {
-    if (static_cast<int>(function) < static_cast<int>(motorFunctionMax))
-    {
-      function = static_cast<motorFunction>(static_cast<int>(function) + 1);
-    }
-    else
-    {
-      function = No;
-    }
-  }
-  else
-  {
-    if (static_cast<int>(function) > (static_cast<int>(Off)))
-    {
-      function = static_cast<motorFunction>(static_cast<int>(function) - 1);
-    }
-    else
-    {
-      function = motorFunctionMax;
-    }
-  }
-  setSettingsFunction (buttonId, portId, function);
-  Serial.println("set function [" + String(static_cast<uint8_t>(buttonId)) + "," + String(static_cast<uint8_t>(portId)) + "]=" +String(function));
-}
-
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 {
-  Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
-
   int8_t newValue;
   for ( uint8_t i = 0; i <= getMaxPortId(); i++)
   {
@@ -129,8 +96,6 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 
     if (setSettingsCurrentValue(id,i, newValue))
     {
-      Serial.println("set value [" + String(static_cast<uint8_t>(id)) + "," + String(static_cast<uint8_t>(i)) + "]=" +String(newValue));
-
       if (id <= getMaxRemoteButton())
       {
         if ((getSettingsFunction(id,i) == SteeringForward ||

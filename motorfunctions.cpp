@@ -1,5 +1,8 @@
 #include "motorfunctions.h"
 #include "motor.h"
+#include "settings.h"
+
+motorFunction motorFunctionMax = static_cast<motorFunction>(static_cast<int>(motorFunctionLast) - 1);
 
 int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
 {
@@ -75,4 +78,33 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
   {
     return currentValue;
   }
+}
+
+void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse)
+{
+  motorFunction function = getSettingsFunction(buttonId, portId);
+
+  if (reverse == false)
+  {
+    if (static_cast<int>(function) < static_cast<int>(motorFunctionMax))
+    {
+      function = static_cast<motorFunction>(static_cast<int>(function) + 1);
+    }
+    else
+    {
+      function = No;
+    }
+  }
+  else
+  {
+    if (static_cast<int>(function) > (static_cast<int>(Off)))
+    {
+      function = static_cast<motorFunction>(static_cast<int>(function) - 1);
+    }
+    else
+    {
+      function = motorFunctionMax;
+    }
+  }
+  setSettingsFunction (buttonId, portId, function);
 }
