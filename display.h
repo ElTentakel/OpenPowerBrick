@@ -10,5 +10,12 @@ void display_set(const uint8_t row, const uint8_t col, const uint8_t Rdata, cons
 
 void display_setRowArray (const uint8_t Row, const uint8_t Start, const uint8_t Lenght, const uint8_t* Array, const bool updateBuff = false);
 void display_clear(void);
+void display_redrawFunctions();
+
+void display_counterDelay (uint32_t d);
+void display_initAnimation();
+bool display_updateAnimationCounter ();
+bool display_resetAnimationCounter();
+void display_drawFunctionAnimation();
 
 #endif

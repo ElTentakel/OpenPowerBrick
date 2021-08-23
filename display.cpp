@@ -1,4 +1,12 @@
 #include "display.h"
+#include "motorfunctions.h"
+#include "menu.h"
+#include "settings.h"
+
+uint8_t display_timerCounter = 0;
+uint8_t display_timerCounter_step = 0;
+bool initAnimationState = false;
+
 uint8_t DisBuff[2 + 5 * 5 * 3];
 
 void display_init(void)
@@ -48,5 +56,66 @@ void display_clear(void)
     {
       display_set (i, j, 0, 0, 0);
     }
+  }
+}
+
+void display_counterDelay (uint32_t d)
+{
+  display_timerCounter += d / 50;
+  delay (d);
+}
+
+// Update Counter for animation
+bool display_updateAnimationCounter ()
+{
+  display_timerCounter ++;
+  if (display_timerCounter > 20)
+  {
+    display_timerCounter = 0;
+    return true;
+  }
+  return false;
+}
+
+bool display_resetAnimationCounter ()
+{  
+  display_timerCounter_step = 0;
+}
+
+void display_initAnimation ()
+{
+  if (display_updateAnimationCounter ())
+  {
+    if (initAnimationState)
+    {
+      initAnimationState = false;
+      display_set(0, 0, 0, 0, 0, true);
+    }
+    else
+    {
+      initAnimationState = true;
+      display_set(0, 0, 0, 0, 255, true);
+    }
+  }
+}
+
+void display_drawFunctionAnimation()
+{
+  if (display_updateAnimationCounter ())
+  {
+    display_timerCounter_step++;
+    if (display_timerCounter_step > functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Steps)
+    {
+      display_resetAnimationCounter();
+    }
+    display_setRowArray(getSubState(), 1, 4, functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Graphics[display_timerCounter_step], true);
+  }
+}
+
+void display_redrawFunctions()
+{
+  for (int i = 0; i <= getMaxPortId(); i++)
+  {
+    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(getRemoteButton(),i)].Graphics[functionParameters[getSettingsFunction(getRemoteButton(),i)].Steps], true);
   }
 }

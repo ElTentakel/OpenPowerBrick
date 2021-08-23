@@ -25,30 +25,8 @@ byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)P
 #include "display.h"
 #include "settings.h"
 
-bool initAnimationState = false;
 InitState HubInitState[2] = {notConnected, notConnected};
-
-uint8_t timer_counter = 0;
-uint8_t timer_counter_step = 0;
 hubType       hub = noHub;
-
-void counter_delay (uint32_t d)
-{
-  timer_counter += d / 50;
-  delay (d);
-}
-
-// Update Counter for animation
-bool update_counter ()
-{
-  timer_counter ++;
-  if (timer_counter > 20)
-  {
-    timer_counter = 0;
-    return true;
-  }
-  return false;
-}
 
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
 {
@@ -161,20 +139,12 @@ void updateState ()
     resetSubState();
     updateSubState();
     display_redrawFunctions();
-    timer_counter_step = 0;
-    counter_delay(250);
+    display_resetAnimationCounter;
+    display_counterDelay(250);
   }
 
   Serial.println("State" + String(static_cast<uint8_t>(getState())));
   display_set (0, static_cast<uint8_t>(getState()) - 1, 255, 255, 255, true);
-}
-
-void display_redrawFunctions()
-{
-  for (int i = 0; i <= getMaxPortId(); i++)
-  {
-    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(getRemoteButton(),i)].Graphics[functionParameters[getSettingsFunction(getRemoteButton(),i)].Steps], true);
-  }
 }
 
 void configure_remote (uint8_t id)
@@ -258,23 +228,6 @@ bool connect_hub (uint8_t id)
   }
 }
 
-void InitAnimation ()
-{
-  if (update_counter ())
-  {
-    if (initAnimationState)
-    {
-      initAnimationState = false;
-      display_set(0, 0, 0, 0, 0, true);
-    }
-    else
-    {
-      initAnimationState = true;
-      display_set(0, 0, 0, 0, 255, true);
-    }
-  }
-}
-
 // callback function to handle updates of remote buttons
 void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)
 {
@@ -329,8 +282,8 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
           updateMotorFunction (getRemoteButton(), getPortId(), true);
         }
         display_redrawFunctions();
-        timer_counter_step = 0;
-        counter_delay(250);
+        display_resetAnimationCounter;
+        display_counterDelay(250);
         break;
     }
   }
@@ -360,8 +313,7 @@ void setup() {
   PUHub[0].init();
 
   M5.begin(true, false, true);
-  counter_delay(50);
-
+  display_counterDelay(50);
   display_init();
 }
 
@@ -478,7 +430,7 @@ void loop()
     }
 
     // Animation
-    InitAnimation();
+    display_initAnimation();
   }
   else
   {
@@ -492,15 +444,7 @@ void loop()
       default:
         check_motor_calibration();
         // Animation
-        if (update_counter ())
-        {
-          timer_counter_step++;
-          if (timer_counter_step > functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Steps)
-          {
-            timer_counter_step = 0;
-          }
-          display_setRowArray(getSubState(), 1, 4, functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Graphics[timer_counter_step], true);
-        }
+        display_drawFunctionAnimation();
         break;
     }
 
@@ -510,6 +454,6 @@ void loop()
     }
 
   }
-  counter_delay (50);
+  display_counterDelay (50);
   M5.update();
 }
