@@ -1,3 +1,6 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
 #include "motorfunctions.h"
 
 typedef struct sSettings {
@@ -13,3 +16,5 @@ uint8_t getSettingsCurrentValue (uint8_t buttonId, uint8_t portId);
 bool setSettingsFunction (uint8_t  buttonId, uint8_t portId, motorFunction function);
 // return true if value changed
 bool setSettingsCurrentValue (uint8_t  buttonId, uint8_t portId, uint8_t value);
+
+#endif

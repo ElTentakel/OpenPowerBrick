@@ -28,24 +28,9 @@ byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)P
 bool initAnimationState = false;
 InitState HubInitState[2] = {notConnected, notConnected};
 
-typedef struct sRemoteState
-{
-  bool  RightPressed;
-  bool  LeftPressed;
-} tRemoteState;
-
-tRemoteState RemoteState[2];
-
-// remoteButton = state - 2, hubPort = substate - 1
-
-MenuState stateMax = Menu1;
-MenuState subStateMax = Init;
 motorFunction motorFunctionMax = static_cast<motorFunction>(static_cast<int>(motorFunctionLast) - 1);
 uint8_t timer_counter = 0;
 uint8_t timer_counter_step = 0;
-
-MenuState     state = Init;
-MenuState     substate = Init;
 hubType       hub = noHub;
 
 void counter_delay (uint32_t d)
@@ -101,7 +86,7 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
   Serial.println("controlMotorFuntion ID:" + String(id) + " buttonPressed:" + String(buttonPressed));
 
   int8_t newValue;
-  for ( uint8_t i = 0; i <= subStateMax - 1; i++)
+  for ( uint8_t i = 0; i <= getMaxPortId(); i++)
   {
     switch (getSettingsFunction(id,i))
     {
@@ -146,7 +131,7 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
     {
       Serial.println("set value [" + String(static_cast<uint8_t>(id)) + "," + String(static_cast<uint8_t>(i)) + "]=" +String(newValue));
 
-      if (id < subStateMax)
+      if (id <= getMaxRemoteButton())
       {
         if ((getSettingsFunction(id,i) == SteeringForward ||
              getSettingsFunction(id,i) == SteeringBackward) &&
@@ -175,65 +160,29 @@ void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
   }
 }
 
-void updateSubState (bool reverse = false)
-{
-  display_set (static_cast<uint8_t>(substate), 0, 0, 0, 0, true);
-
-  if (reverse == false)
-  {
-    if (static_cast<int>(substate) < static_cast<int>(subStateMax))
-    {
-      substate = static_cast<MenuState>(static_cast<int>(substate) + 1);
-    }
-    else
-    {
-      substate = Menu1;
-    }
-  }
-  else
-  {
-    if (static_cast<int>(substate) > static_cast<int>(Menu1))
-    {
-      substate = static_cast<MenuState>(static_cast<int>(substate) - 1);
-    }
-    else
-    {
-      substate = subStateMax;
-    }
-  }
-  Serial.println("substate" + String(static_cast<uint8_t>(substate)));
-  display_set (static_cast<uint8_t>(substate), 0, 255, 255, 255, true);
-}
-
 void updateState ()
 {
   display_clear ();
 
-  if (static_cast<int>(state) < static_cast<int>(stateMax))
+  if (updateAndResetState())
   {
-    state = static_cast<MenuState>(static_cast<int>(state) + 1);
-  }
-  else
-  {
-    state = Menu1;
-
     // Do calibration stuff for Servos
-    for (int j = 1; j <= subStateMax; j++)
+    for (int j = 0; j <= getMaxPortId(); j++)
     {
       Serial.println("");
       Serial.print("Sub:" + String (j) + ":");
 
-      for (int i = 2; i <= stateMax; i++)
+      for (int i = 0; i <= getMaxRemoteButton(); i++)
       {
-        Serial.print(String(getSettingsFunction(i-2,j-1)));
+        Serial.print(String(getSettingsFunction(i,j)));
 
-        if ((getSettingsFunction(i-2,j-1) == SteeringForward ||
-             getSettingsFunction(i-2,j-1) == SteeringBackward)  &&
-            !MotorIsCalibrated (PUport[j-1]) &&
-            !MotorIsCalibrating (PUport[j-1]))
+        if ((getSettingsFunction(i,j) == SteeringForward ||
+             getSettingsFunction(i,j) == SteeringBackward)  &&
+            !MotorIsCalibrated (PUport[j]) &&
+            !MotorIsCalibrating (PUport[j]))
         {
           Serial.print("*");
-          MotorStartCalibration (PUport[j-1]);
+          MotorStartCalibration (PUport[j]);
           break;
         }
         Serial.print(",");
@@ -242,24 +191,24 @@ void updateState ()
     Serial.println("");
   }
 
-  if (state != Init && state != Menu1)
+  if (getState() != Init && getState() != Menu1)
   {
-    substate = Init;
+    resetSubState();
     updateSubState();
     display_redrawFunctions();
     timer_counter_step = 0;
     counter_delay(250);
   }
 
-  Serial.println("State" + String(static_cast<uint8_t>(state)));
-  display_set (0, static_cast<uint8_t>(state) - 1, 255, 255, 255, true);
+  Serial.println("State" + String(static_cast<uint8_t>(getState())));
+  display_set (0, static_cast<uint8_t>(getState()) - 1, 255, 255, 255, true);
 }
 
 void display_redrawFunctions()
 {
-  for (int i = 0; i < subStateMax; i++)
+  for (int i = 0; i <= getMaxPortId(); i++)
   {
-    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(state - 2,i)].Graphics[functionParameters[getSettingsFunction(state - 2,i)].Steps], true);
+    display_setRowArray(i + 1, 1, 4, functionParameters[getSettingsFunction(getRemoteButton(),i)].Graphics[functionParameters[getSettingsFunction(getRemoteButton(),i)].Steps], true);
   }
 }
 
@@ -374,7 +323,7 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
     Serial.print("Buttonstate: ");
     Serial.println((byte)buttonState, HEX);
 
-    switch (state)
+    switch (getState())
     {
       case Init:
         break;
@@ -408,11 +357,11 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
           updateSubState ();
         else if (portNumber == 1 && buttonState == ButtonState::UP)
         {
-          updateMotorFunction (state - 2, substate - 1);
+          updateMotorFunction (getRemoteButton(), getPortId());
         }
         else if (portNumber == 1 && buttonState == ButtonState::DOWN)
         {
-          updateMotorFunction (state - 2, substate - 1, true);
+          updateMotorFunction (getRemoteButton(), getPortId(), true);
         }
         display_redrawFunctions();
         timer_counter_step = 0;
@@ -424,7 +373,7 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
 
 void check_motor_calibration ()
 {
-  for (int i = 0; i < subStateMax; i++)
+  for (int i = 0; i <= getMaxPortId(); i++)
   {
     if (MotorIsCalibrating(PUport[i]))
     {
@@ -454,7 +403,7 @@ void setup() {
 void loop()
 {
   // connect flow
-  if (state == Init)
+  if (getState() == Init)
   {
     if (Remote[0].isConnecting())
     {
@@ -474,7 +423,7 @@ void loop()
       Remote[0].setLedColor(GREEN);
       display_set(0, 1, 0, 255, 0);
       display_set(0, 2, 0, 255, 0, true);
-      stateMax = Menu3;
+      setStateMax(Menu3);
       // enable registration for 2. Remote
       Remote[1].init();
     }
@@ -497,7 +446,7 @@ void loop()
       Remote[1].setLedColor(GREEN);
       display_set(0, 3, 0, 255, 0);
       display_set(0, 4, 0, 255, 0, true);
-      stateMax = Menu5;
+      setStateMax(Menu5);
     }
 
     if (PUHub[0].isConnecting())
@@ -514,7 +463,7 @@ void loop()
         PUHub[0].activatePortDevice(PUport[0], tachoMotorCallback);
         PUHub[0].activatePortDevice(PUport[1], tachoMotorCallback);
 
-        subStateMax = Menu2;
+        setSubStateMax(Menu2);
       }
       if (PUHub[0].getHubType() == HubType::CONTROL_PLUS_HUB)
       {
@@ -538,7 +487,7 @@ void loop()
         PUHub[0].activatePortDevice(PUport[2], tachoMotorCallback);
         PUHub[0].activatePortDevice(PUport[3], tachoMotorCallback);
 
-        subStateMax = Menu4;
+        setSubStateMax(Menu4);
       }
     }
 
@@ -556,7 +505,7 @@ void loop()
     {
       configure_hub (0);
       configure_remote (0);
-      if (stateMax == Menu5)
+      if (getMaxState() == Menu5)
       {
         configure_remote (1);
       }
@@ -568,7 +517,7 @@ void loop()
   }
   else
   {
-    switch (state)
+    switch (getState())
     {
       case Init:
         break;
@@ -581,11 +530,11 @@ void loop()
         if (update_counter ())
         {
           timer_counter_step++;
-          if (timer_counter_step > functionParameters[getSettingsFunction(state - 2, substate - 1)].Steps)
+          if (timer_counter_step > functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Steps)
           {
             timer_counter_step = 0;
           }
-          display_setRowArray(substate, 1, 4, functionParameters[getSettingsFunction(state - 2, substate - 1)].Graphics[timer_counter_step], true);
+          display_setRowArray(getSubState(), 1, 4, functionParameters[getSettingsFunction(getRemoteButton(), getPortId())].Graphics[timer_counter_step], true);
         }
         break;
     }
