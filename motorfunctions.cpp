@@ -110,6 +110,7 @@ void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse)
     }
   }
   setSettingsFunction (buttonId, portId, function);
+  MotorResetCalibtation(portId);
 }
 
 void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)

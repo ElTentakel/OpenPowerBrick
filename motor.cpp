@@ -48,7 +48,7 @@ void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8
   Lpf2Hub *myHub = (Lpf2Hub *)hub;
   int rotation = 0;
 
-  // Serial.print("sensorMessage callback for port: ");
+  // Serial.print("motor callback port: ");
   // Serial.println(portNumber, DEC);
 
   if (deviceType == DeviceType::MEDIUM_LINEAR_MOTOR
@@ -58,19 +58,20 @@ void tachoMotorCallback(void *hub, byte portNumber, DeviceType deviceType, uint8
       || deviceType == DeviceType::TECHNIC_XLARGE_LINEAR_MOTOR
      )
   {
-    if (MotorState[(int)portNumber] == motorInit)
-    {
-      Serial.println("motorCalibration");
-      MotorState[(int)portNumber] = motorReadyForCalibration;
-    }
     rotation = myHub->parseTachoMotor(pData);
     MotorPosition[(int)portNumber] = rotation;
+    if (MotorState[(int)portNumber] == motorInit)
+    {
+      Serial.println("motorReadyForCalibration");
+      MotorState[(int)portNumber] = motorReadyForCalibration;
+    }
     Serial.print("rotation:");
     Serial.println(rotation, DEC);
   }
   else
   {
     MotorState[(int)portNumber] = motorNoCalibration;
+    // Serial.println("motorNoCalibration");
   }
 }
 
@@ -85,6 +86,15 @@ void checkMotorCalibration()
       MotorCalibrationStep (getHub(i), getHubPort(i));
     }
   }
+}
+
+void MotorResetCalibtation (int port)
+{
+  MotorState[(int)port] = motorInit;
+  MotorPosition[(int)port] = 0;
+  MotorCalibrationLeft[(int)port] = 0;
+  MotorCalibrationRight[(int)port] = 0;
+  MotorCalibrationCounter[(int)port] = 0;
 }
 
 bool MotorStartCalibration (int port)

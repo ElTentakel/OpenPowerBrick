@@ -14,8 +14,8 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
 {
   Lpf2Hub *myRemoteHub = (Lpf2Hub *)hub;
 
-  Serial.print("sensorMessage callback for port: ");
-  Serial.println(portNumber, DEC);
+  // Serial.print("remote callback port: ");
+  // Serial.println(portNumber, DEC);
   if (deviceType == DeviceType::REMOTE_CONTROL_BUTTON)
   {
     ButtonState buttonState = myRemoteHub->parseRemoteButton(pData);

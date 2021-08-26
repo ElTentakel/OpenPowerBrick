@@ -19,6 +19,7 @@ void setSimpleMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2
 void setSteeringMotorPosition (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub, byte PUport);
 
 void checkMotorCalibration();
+void MotorResetCalibtation (int port);
 bool MotorStartCalibration (int port);
 bool MotorIsCalibrating (int port);
 bool MotorCalibrationStep (void *hub, byte portNumber);
