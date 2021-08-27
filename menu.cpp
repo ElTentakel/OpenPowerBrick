@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "display.h" 
- #include <stdint.h>
+#include <stdint.h>
 
 // remoteButton = state - 2, hubPort = substate - 1
 static MenuState stateMax = Menu1;

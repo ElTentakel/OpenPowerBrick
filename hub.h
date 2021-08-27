@@ -11,8 +11,8 @@ enum hubType      { noHub = 0,
 };
 
 Lpf2Hub *getHub(uint8_t port);
+hubType getHubType(uint8_t hub);
 byte getHubPort(uint8_t port);
-// bool connectHub (uint8_t id);
 void tryConnectHubs();
 void configureHub (uint8_t id);
 void connectedHub(uint8_t i);
