@@ -6,6 +6,7 @@
 #include "menu.h"
 
 static motorFunction motorFunctionMax = static_cast<motorFunction>(static_cast<int>(motorFunctionLast) - 1);
+static uint8_t skipCounter = 0;
 
 int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
 {
@@ -83,6 +84,61 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
   }
 }
 
+int8_t MotorFunctionAccForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{
+  if (buttonPressed && Action == Forward && currentValue < Steps)
+  {
+    return currentValue + 1;
+  }
+  else if (buttonPressed && Action == Backward && currentValue > -Steps)
+  {
+    return currentValue - 1;
+  }
+  else if (!buttonPressed && currentValue > 0)
+  {
+    return currentValue - 1;
+  }
+  else if (!buttonPressed && currentValue < 0)
+  {
+    return currentValue + 1;
+  }
+  else if (buttonPressed && Action == Stop)
+  {
+    return 0;
+  }
+  else
+  {
+    return currentValue;
+  }
+}
+int8_t MotorFunctionAccBackward (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps)
+{
+  if (buttonPressed && Action == Forward && currentValue > -Steps)
+  {
+    return currentValue - 1;
+  }
+  if (buttonPressed && Action == Backward && currentValue < Steps)
+  {
+    return currentValue + 1;
+  } 
+  else if (!buttonPressed && currentValue > 0)
+  {
+    return currentValue - 1;
+  }
+  else if (!buttonPressed && currentValue < 0)
+  {
+    return currentValue + 1;
+  }
+  else if (buttonPressed && Action == Stop)
+  {
+    return 0;
+  }
+  else
+  {
+    return currentValue;
+  }
+}
+
 void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse)
 {
   motorFunction function = getSettingsFunction(buttonId, portId);
@@ -113,15 +169,21 @@ void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse)
   MotorResetCalibtation(portId);
 }
 
-void checkTimedMotorFunctions ()
+void checkTimedMotorFunctions (uint8_t skip)
 {
-  for ( uint8_t i = 0; i <= getMaxPortId(); i++)
+  if (skipCounter < skip)
+    skipCounter++;
+  else 
   {
-    for ( uint8_t j = 0; j <= getMaxRemoteButton(); j++)
+    skipCounter = 0;
+    for ( uint8_t i = 0; i <= getMaxPortId(); i++)
     {
-      if (countDownSettingsTimer(j, i))
+      for ( uint8_t j = 0; j <= getMaxRemoteButton(); j++)
       {
-        controlMotorFuntion(j, i, getSettingsLastMotorDirection(j,i), getSettingsLastButtonState(j,i), true);
+        if (countDownSettingsTimer(j, i))
+        {
+          controlMotorFuntion(j, i, getSettingsLastMotorDirection(j,i), getSettingsLastButtonState(j,i), true);
+        }
       }
     }
   }
@@ -171,6 +233,18 @@ void controlMotorFuntion (uint8_t buttonId, uint8_t portId, motorDirection dir, 
     case SteeringBackward:
       Serial.println("SteeringBackward");
       newValue = MotorFunctionFullBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
+      break;
+    case AccForward8:
+      Serial.println("AccForward8");
+      newValue = MotorFunctionAccForward  (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[AccForward8].Steps);
+      if (!isEvent)
+        setSettingsTimerCounter (buttonId, portId, functionParameters[AccForward8].Steps - 1, buttonPressed, dir);
+      break;
+    case AccBackward8:
+      Serial.println("AccBackward8");
+      newValue = MotorFunctionAccBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[AccBackward8].Steps);
+      if (!isEvent)
+        setSettingsTimerCounter (buttonId, portId, functionParameters[AccForward8].Steps - 1, buttonPressed, dir);
       break;
     default:
       newValue = getSettingsCurrentValue(buttonId,portId);

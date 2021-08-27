@@ -106,7 +106,7 @@ void loop()
         break;
       case Menu1:
         checkMotorCalibration();
-        checkTimedMotorFunctions();
+        checkTimedMotorFunctions(5); // check time function only every 5th call
         break;
       default:
         checkMotorCalibration();
