@@ -30,19 +30,19 @@ void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *
         switch (buttonState)
         {
           case ButtonState::STOP:
-            controlMotorFuntion (portNumber, Stop, true);
+            controlMotorFuntions (portNumber, Stop, true);
             break;
 
           case ButtonState::UP:
-            controlMotorFuntion (portNumber, Forward, true);
+            controlMotorFuntions (portNumber, Forward, true);
             break;
 
           case ButtonState::DOWN:
-            controlMotorFuntion (portNumber, Backward, true);
+            controlMotorFuntions (portNumber, Backward, true);
             break;
 
           case ButtonState::RELEASED:
-            controlMotorFuntion (portNumber, Backward, false);
+            controlMotorFuntions (portNumber, Backward, false);
             break;
 
           default:
@@ -124,6 +124,7 @@ void tryConnectRemotes ()
     setStateMax(Menu3);
     // enable registration for 2. Remote
     Remote[1].init();
+    // todo: connectedRemote(1);
   }
 
   if (Remote[1].isConnecting())

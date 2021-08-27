@@ -12,6 +12,8 @@ enum motorFunction  { No = 0,
                       StepBackward8 = 6,
                       SteeringForward = 7,
                       SteeringBackward = 8,
+                      AccForward8 = 9,
+                      AccBackward8 = 10,
                       motorFunctionLast
                     };
 
@@ -95,7 +97,32 @@ static const tFunctionParameters functionParameters [motorFunctionLast] =
       [0] = {  0,  0,  0, 0,  0,  0, 255,  255,  0,  255,  255,  0},
       [1] = {  255, 255,  0,   255, 255,  0,   0, 0,  0,    0, 0,  0 }
     }
-  }
+  },
+  { AccForward8,  8, {
+      [0] = {  0,  0,  0,   0,   0,  0,   0,  0,   0,    0,   0,  0 },
+      [1] = {  0, 32,  0,   0,  32,  0,   0,  32,  0,    0,  32,  0 },
+      [2] = {  0, 64,  0,   0,  64,  0,   0,  64,  0,    0,  64,  0 },
+      [3] = {  0, 96,  0,   0,  96,  0,   0,  96,  0,    0,  96,  0 },
+      [4] = {  0,128,  0,   0, 128,  0,   0, 128,  0,    0, 128,  0 },
+      [5] = {  0,160,  0,   0, 160,  0,   0, 160,  0,    0, 160,  0 },
+      [6] = {  0,192,  0,   0, 192,  0,   0, 192,  0,    0, 192,  0 },
+      [7] = {  0,224,  0,   0, 224,  0,   0, 224,  0,    0, 224,  0 },
+      [8] = {  0,255,  0,   0, 255,  0,   0, 192,  0,    0, 255,  0 },
+
+    }
+  },
+  { AccBackward8, 8, {
+      [0] = {  0,  0,  0,   0,  0,  0,   0,  0,  0,    0,  0,  0 },
+      [1] = {  32, 0,  0,  32,  0,  0,  32,  0,  0,   32,  0,  0 },
+      [2] = {  64, 0,  0,  64,  0,  0,  64,  0,  0,   64,  0,  0 },
+      [3] = {  96, 0,  0,  96,  0,  0,  96,  0,  0,   96,  0,  0 },
+      [4] = { 128, 0,  0, 128,  0,  0, 128,  0,  0,  128,  0,  0 },
+      [5] = { 160, 0,  0, 160,  0,  0, 160,  0,  0,  160,  0,  0 },
+      [6] = { 192, 0,  0, 192,  0,  0, 192,  0,  0,  192,  0,  0 },
+      [7] = { 224, 0,  0, 224,  0,  0, 224,  0,  0,  224,  0,  0 },
+      [8] = { 255, 0,  0, 225,  0,  0, 225,  0,  0,  255,  0,  0 },
+    }
+  },
 };
 
 int8_t MotorFunctionFullForward  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
@@ -105,6 +132,9 @@ int8_t MotorFunctionStepBackward (int8_t currentValue, motorDirection Action, bo
 int8_t MotorFunctionNo  (int8_t currentValue, motorDirection Action, bool buttonPressed, int8_t Steps);
 
 void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse = false);
-void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed);
+void controlMotorFuntion (uint8_t id, uint8_t portId, motorDirection dir, bool buttonPressed, bool isEvent);
+void controlMotorFuntions (uint8_t id, motorDirection dir, bool buttonPressed);
 
+
+void checkTimedMotorFunctions ();
 #endif

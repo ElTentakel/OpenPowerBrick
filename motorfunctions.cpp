@@ -113,77 +113,95 @@ void updateMotorFunction (uint8_t buttonId, uint8_t portId, bool reverse)
   MotorResetCalibtation(portId);
 }
 
-void controlMotorFuntion (uint8_t id, motorDirection dir, bool buttonPressed)
+void checkTimedMotorFunctions ()
 {
-  int8_t newValue;
   for ( uint8_t i = 0; i <= getMaxPortId(); i++)
   {
-    switch (getSettingsFunction(id,i))
+    for ( uint8_t j = 0; j <= getMaxRemoteButton(); j++)
     {
-      case FullForward:
-        Serial.println("FullForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullForward].Steps);
-        break;
-      case FullBackward:
-        Serial.println("FullBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[FullBackward].Steps);
-        break;
-      case StepForward:
-        Serial.println("StepForward");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward].Steps);
-        break;
-      case StepBackward:
-        Serial.println("StepBackward");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward].Steps);
-        break;
-      case StepForward8:
-        Serial.println("StepForward8");
-        newValue = MotorFunctionStepForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepForward8].Steps);
-        break;
-      case StepBackward8:
-        Serial.println("StepBackward8");
-        newValue = MotorFunctionStepBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[StepBackward8].Steps);
-        break;
-      case SteeringForward:
-        Serial.println("SteeringForward");
-        newValue = MotorFunctionFullForward  (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringForward].Steps);
-        break;
-      case SteeringBackward:
-        Serial.println("SteeringBackward");
-        newValue = MotorFunctionFullBackward (getSettingsCurrentValue(id,i), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
-        break;
-      default:
-        newValue = getSettingsCurrentValue(id,i);
-        break;
-    }
-
-    if (setSettingsCurrentValue(id,i, newValue))
-    {
-      if (id <= getMaxRemoteButton())
+      if (countDownSettingsTimer(j, i))
       {
-        if ((getSettingsFunction(id,i) == SteeringForward ||
-             getSettingsFunction(id,i) == SteeringBackward) &&
-             MotorIsCalibrated (getHubPort(i))
-           )
-        {
-          setSteeringMotorPosition (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, getHub(i), getHubPort(i));
-        }
-        else
-        {
-          // Todo: use hubType for second PU Hub
-          setSimpleMotorSpeed (i, newValue, functionParameters[getSettingsFunction (id, i)].Steps, getHub(i), getHubPort(i));
-        }
+        controlMotorFuntion(j, i, getSettingsLastMotorDirection(j,i), getSettingsLastButtonState(j,i), true);
       }
-
-      // Todo: use animation values
-      if (newValue == 0)
-        display_set (i+1,id+1, 0, 0, 0, true);
-
-      if (newValue > 0)
-        display_set (i+1,id+1, 0, 255, 0, true);
-
-      if (newValue < 0)
-        display_set (i+1,id+1, 255, 0, 0, true);
     }
+  }
+}
+
+void controlMotorFuntions (uint8_t buttonId, motorDirection dir, bool buttonPressed)
+{
+  for ( uint8_t i = 0; i <= getMaxPortId(); i++)
+  {
+    controlMotorFuntion (buttonId, i, dir, buttonPressed, false);
+  }
+}
+
+void controlMotorFuntion (uint8_t buttonId, uint8_t portId, motorDirection dir, bool buttonPressed, bool isEvent)
+{
+  int8_t newValue;
+  switch (getSettingsFunction(buttonId,portId))
+  {
+    case FullForward:
+      Serial.println("FullForward");
+      newValue = MotorFunctionFullForward  (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[FullForward].Steps);
+      break;
+    case FullBackward:
+      Serial.println("FullBackward");
+      newValue = MotorFunctionFullBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[FullBackward].Steps);
+      break;
+    case StepForward:
+      Serial.println("StepForward");
+      newValue = MotorFunctionStepForward  (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[StepForward].Steps);
+      break;
+    case StepBackward:
+      Serial.println("StepBackward");
+      newValue = MotorFunctionStepBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[StepBackward].Steps);
+      break;
+    case StepForward8:
+      Serial.println("StepForward8");
+      newValue = MotorFunctionStepForward  (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[StepForward8].Steps);
+      break;
+    case StepBackward8:
+      Serial.println("StepBackward8");
+      newValue = MotorFunctionStepBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[StepBackward8].Steps);
+      break;
+    case SteeringForward:
+      Serial.println("SteeringForward");
+      newValue = MotorFunctionFullForward  (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[SteeringForward].Steps);
+      break;
+    case SteeringBackward:
+      Serial.println("SteeringBackward");
+      newValue = MotorFunctionFullBackward (getSettingsCurrentValue(buttonId,portId), dir, buttonPressed, functionParameters[SteeringBackward].Steps);
+      break;
+    default:
+      newValue = getSettingsCurrentValue(buttonId,portId);
+      break;
+  }
+
+  if (setSettingsCurrentValue(buttonId,portId, newValue))
+  {
+    if (buttonId <= getMaxRemoteButton())
+    {
+      if ((getSettingsFunction(buttonId,portId) == SteeringForward ||
+           getSettingsFunction(buttonId,portId) == SteeringBackward) &&
+           MotorIsCalibrated (getHubPort(portId))
+         )
+      {
+        setSteeringMotorPosition (portId, newValue, functionParameters[getSettingsFunction (buttonId, portId)].Steps, getHub(portId), getHubPort(portId));
+      }
+      else
+      {
+        setSimpleMotorSpeed (portId, newValue, functionParameters[getSettingsFunction (buttonId, portId)].Steps, getHub(portId), getHubPort(portId));
+      }
+    }
+
+    // Todo: use animation values
+    if (newValue == 0)
+      display_set (portId+1,buttonId+1, 0, 0, 0, true);
+
+    if (newValue > 0)
+      display_set (portId+1,buttonId+1, 0, 255, 0, true);
+
+    if (newValue < 0)
+      display_set (portId+1,buttonId+1, 255, 0, 0, true);
   }
 }

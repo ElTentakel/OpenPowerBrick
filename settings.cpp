@@ -1,10 +1,11 @@
 #include "settings.h"
 #include "motorfunctions.h"
 
-static tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
-  [1] = {{ No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }, { No, 0, 0 }},
-  [2] = {{ No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }},
-  [3] = {{ No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }}
+static tSettings SettingsMatrix[4][4] = { 
+  [0] = {{ FullForward, 4, 0, 0, false }, { No, 0, 0, 0, false }, { No, 0, 0, 0, false }, { No, 0, 0, 0, false }},
+  [1] = {{ No, 0, 0, 0, false }, { FullForward, 4, 0, 0, false }, { No, 0, 0, 0, false }, { No, 0, 0, 0, false }},
+  [2] = {{ No, 0, 0, 0, false }, { No, 0, 0, 0, false }, { FullForward, 4, 0, 0, false }, { No, 0, 0, 0, false }},
+  [3] = {{ No, 0, 0, 0, false }, { No, 0, 0, 0, false }, { No, 0, 0, 0, false }, { FullForward, 4, 0, 0, false }}
 };
 
 motorFunction getSettingsFunction (uint8_t buttonId, uint8_t portId)
@@ -37,4 +38,36 @@ bool setSettingsCurrentValue (uint8_t  buttonId, uint8_t portId, uint8_t value)
   
   SettingsMatrix [buttonId][portId].currentValue = value;
   return ret;
+}
+
+uint32_t getSettingsTimerCounter (uint8_t buttonId, uint8_t portId)
+{
+  return SettingsMatrix [buttonId][portId].timerCounter;
+}
+
+bool getSettingsLastButtonState (uint8_t buttonId, uint8_t portId)
+{
+  return SettingsMatrix [buttonId][portId].lastButtonState;
+}
+
+motorDirection getSettingsLastMotorDirection(uint8_t buttonId, uint8_t portId)
+{
+  return SettingsMatrix [buttonId][portId].lastMotorDirection;
+}
+
+void setSettingsTimerCounter (uint8_t  buttonId, uint8_t portId, uint32_t timer, bool lastButtonState, motorDirection lastMotorDirection)
+{
+  SettingsMatrix [buttonId][portId].timerCounter = timer;
+  SettingsMatrix [buttonId][portId].lastButtonState = lastButtonState;
+  SettingsMatrix [buttonId][portId].lastMotorDirection = lastMotorDirection;
+}
+
+bool countDownSettingsTimer (uint8_t  buttonId, uint8_t portId)
+{
+  if (SettingsMatrix [buttonId][portId].timerCounter > 0)
+  {
+    SettingsMatrix [buttonId][portId].timerCounter = SettingsMatrix [buttonId][portId].timerCounter - 1;
+    return true;
+  }
+  return false;
 }

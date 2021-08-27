@@ -57,7 +57,7 @@ void updateState ()
     display_counterDelay(250);
   }
 
-  Serial.println("State" + String(static_cast<uint8_t>(getState())));
+  Serial.println("State: " + String(static_cast<uint8_t>(getState())));
   display_set (0, static_cast<uint8_t>(getState()) - 1, 255, 255, 255, true);
 }
 
@@ -77,10 +77,9 @@ void loop()
   // connect flow
   if (getState() == Init)
   {
-
     tryConnectRemotes();
     tryConnectHubs();
-
+    
     connectedRemote(0);
     connectedHub(0);
 
@@ -100,16 +99,17 @@ void loop()
   }
   else
   {
+    // menu flow
     switch (getState())
     {
       case Init:
         break;
       case Menu1:
         checkMotorCalibration();
+        checkTimedMotorFunctions();
         break;
       default:
         checkMotorCalibration();
-        // Animation
         display_drawFunctionAnimation();
         break;
     }
@@ -118,7 +118,6 @@ void loop()
     {
       updateState();
     }
-
   }
   display_counterDelay (50);
   M5.update();
