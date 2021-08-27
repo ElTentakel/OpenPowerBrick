@@ -3,10 +3,10 @@
  #include <stdint.h>
 
 // remoteButton = state - 2, hubPort = substate - 1
-MenuState stateMax = Menu1;
-MenuState subStateMax = Init;
-MenuState state = Init;
-MenuState substate = Init;
+static MenuState stateMax = Menu1;
+static MenuState subStateMax = Init;
+static MenuState state = Init;
+static MenuState substate = Init;
 
 void updateSubState (bool reverse)
 {

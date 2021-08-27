@@ -5,9 +5,9 @@
 #include "Lpf2Hub.h"
 #include <stdint.h> 
 
-Lpf2Hub  Remote[2];
-byte RemotePortLeft[2] = { (byte)PoweredUpRemoteHubPort::LEFT, (byte)PoweredUpRemoteHubPort::LEFT};
-byte RemotePortRight[2] = { (byte)PoweredUpRemoteHubPort::RIGHT, (byte)PoweredUpRemoteHubPort::RIGHT};
+static Lpf2Hub  Remote[2];
+static byte RemotePortLeft[2] = { (byte)PoweredUpRemoteHubPort::LEFT, (byte)PoweredUpRemoteHubPort::LEFT};
+static byte RemotePortRight[2] = { (byte)PoweredUpRemoteHubPort::RIGHT, (byte)PoweredUpRemoteHubPort::RIGHT};
 
 // callback function to handle updates of remote buttons
 void remoteCallback(void *hub, byte portNumber, DeviceType deviceType, uint8_t *pData)

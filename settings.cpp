@@ -1,7 +1,7 @@
 #include "settings.h"
 #include "motorfunctions.h"
 
-tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
+static tSettings SettingsMatrix[4][4] = { [0] = {{ FullForward, 4 , 0 }, { No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }},
   [1] = {{ No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }, { No, 0, 0 }},
   [2] = {{ No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }, { No, 0, 0 }},
   [3] = {{ No, 0, 0 }, { No, 0, 0 }, { No, 0, 0 }, { FullForward, 4, 0 }}

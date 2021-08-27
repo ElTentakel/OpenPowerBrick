@@ -4,10 +4,10 @@
 #include "menu.h"
 #include "display.h"
 
-Lpf2Hub  PUHub[2];
-byte PUport[4] = { (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B };
-InitState HubInitState[2] = {notConnected, notConnected};
 hubType       hub = noHub;
+static Lpf2Hub   PUHub[2];
+static byte      PUport[4]       = {(byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B, (byte)PoweredUpHubPort::A, (byte)PoweredUpHubPort::B };
+static InitState HubInitState[2] = {notConnected, notConnected};
 
 Lpf2Hub *getHub(uint8_t port)
 {

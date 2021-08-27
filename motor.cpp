@@ -2,11 +2,11 @@
 #include "menu.h"
 #include "hub.h"
 
-MotorState_ MotorState[4] = {motorInit, motorInit, motorInit, motorInit};
-int MotorPosition[4] = {0,0,0,0};
-int MotorCalibrationLeft[4] = {0,0,0,0};
-int MotorCalibrationRight[4] = {0,0,0,0};
-int MotorCalibrationCounter[4] = {0,0,0,0};
+static MotorState_ MotorState[4] = {motorInit, motorInit, motorInit, motorInit};
+static int MotorPosition[4] = {0,0,0,0};
+static int MotorCalibrationLeft[4] = {0,0,0,0};
+static int MotorCalibrationRight[4] = {0,0,0,0};
+static int MotorCalibrationCounter[4] = {0,0,0,0};
 
 void setSimpleMotorSpeed (uint8_t id, int8_t currentValue, int8_t maxValue, Lpf2Hub* pPUHub, byte PUport)
 {

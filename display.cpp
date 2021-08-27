@@ -3,11 +3,10 @@
 #include "menu.h"
 #include "settings.h"
 
-uint8_t display_timerCounter = 0;
-uint8_t display_timerCounter_step = 0;
-bool initAnimationState = false;
-
-uint8_t DisBuff[2 + 5 * 5 * 3];
+static uint8_t display_timerCounter = 0;
+static uint8_t display_timerCounter_step = 0;
+static bool initAnimationState = false;
+static uint8_t DisBuff[2 + 5 * 5 * 3];
 
 void display_init(void)
 {
