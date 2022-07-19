@@ -3,10 +3,16 @@
 #include "menu.h"
 #include "settings.h"
 
+// for some undefined reasons, the buffer size has to be 6 on recent SDK,
+// change it back for using an older SDK
+
+#define ROW_NUM 6
+// #define ROW_NUM 5
+
 static uint8_t display_timerCounter = 0;
 static uint8_t display_timerCounter_step = 0;
 static bool initAnimationState = false;
-static uint8_t DisBuff[2 + 5 * 5 * 3];
+static uint8_t DisBuff[2 + ROW_NUM * 5 * 3];
 
 void display_init(void)
 {
@@ -16,7 +22,7 @@ void display_init(void)
 
 void display_set(const uint8_t row, const uint8_t col, const uint8_t Rdata, const uint8_t Gdata, const uint8_t Bdata, const bool updateBuff)
 {
-  const uint8_t pos = row * 5 + col;
+  const uint8_t pos = row * ROW_NUM + col;
   DisBuff[2 + pos * 3 + 0] = Rdata;
   DisBuff[2 + pos * 3 + 1] = Gdata;
   DisBuff[2 + pos * 3 + 2] = Bdata;
@@ -30,7 +36,7 @@ void display_set(const uint8_t row, const uint8_t col, const uint8_t Rdata, cons
 void display_setRowArray (const uint8_t Row, const uint8_t Start, const uint8_t Lenght, const uint8_t* Array, const bool updateBuff)
 {
   uint8_t j = 0;
-  for (int i = Start; i < 5; i++)
+  for (int i = Start; i < ROW_NUM; i++)
   {
     if (i < (Start + Lenght))
     {
@@ -49,7 +55,7 @@ void display_clear(void)
   DisBuff[0] = 0x05;
   DisBuff[1] = 0x05;
 
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < ROW_NUM; i++)
   {  
     for (int j = 0; j < 5; j++)
     {

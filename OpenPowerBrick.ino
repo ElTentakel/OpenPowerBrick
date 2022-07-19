@@ -6,6 +6,8 @@
    2021 by Richard Jeske
    Released GPL 2.0 Licence
 
+   Note: if you experience display issues, see ROW_NUM in display.cpp
+
 */
 
 #include "M5Atom.h"
